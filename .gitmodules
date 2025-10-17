@@ -1,0 +1,9 @@
+[submodule "apps/scraper"]
+	path = apps/scraper
+	url = https://github.com/zombar/scraper
+[submodule "apps/controller"]
+	path = apps/controller
+	url = https://github.com/zombar/controller
+[submodule "apps/textanalyzer"]
+	path = apps/textanalyzer
+	url = https://github.com/zombar/textanalyzer
