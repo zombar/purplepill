@@ -19,6 +19,12 @@ help: ## Display this help message
 	@echo "  fmt                - Format code for all services"
 	@echo "  lint               - Lint code for all services"
 	@echo ""
+	@echo "Integration test commands:"
+	@echo "  test-integration       - Run integration tests"
+	@echo "  test-integration-short - Run integration tests (skip benchmarks)"
+	@echo "  test-benchmark         - Run performance/load benchmarks"
+	@echo "  test-all               - Run all tests (unit + integration)"
+	@echo ""
 	@echo "Docker commands:"
 	@echo "  docker-build       - Build all Docker images"
 	@echo "  docker-up          - Start all services with docker-compose"
@@ -194,6 +200,27 @@ submodule-init: ## Initialize submodules (first time setup)
 # Check target - run all quality checks
 check: fmt lint test ## Run all checks (fmt, lint, test)
 	@echo "All checks passed!"
+
+# ==================== Integration Tests ====================
+
+test-integration: ## Run integration tests
+	@echo "Running integration tests..."
+	@cd tests/integration && go test -v -timeout 10m
+	@echo "Integration tests completed!"
+
+test-integration-short: ## Run integration tests without benchmarks
+	@echo "Running integration tests (short mode)..."
+	@cd tests/integration && go test -v -short -timeout 5m
+	@echo "Integration tests completed!"
+
+test-benchmark: ## Run load/performance benchmarks (requires BENCHMARK=true)
+	@echo "Running benchmark tests..."
+	@echo "This may take several minutes..."
+	@cd tests/integration && BENCHMARK=true go test -v -timeout 15m -run TestBenchmark
+	@echo "Benchmark tests completed!"
+
+test-all: test test-integration ## Run all tests (unit + integration)
+	@echo "All tests completed!"
 
 # Development workflow - build and start all services locally
 dev: build ## Build and run all services locally (non-Docker)

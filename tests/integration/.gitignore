@@ -1,0 +1,16 @@
+# Test databases
+*.db
+*.db-shm
+*.db-wal
+
+# Test binaries
+*.test
+*.out
+
+# Coverage files
+*.coverage
+coverage.txt
+
+# Temporary files
+/tmp/
+*.tmp

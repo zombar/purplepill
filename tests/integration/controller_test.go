@@ -1,0 +1,434 @@
+package integration
+
+import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"testing"
+	"time"
+)
+
+const (
+	controllerURL    = "http://localhost:18080"
+	scraperURL       = "http://localhost:18081"
+	textAnalyzerURL  = "http://localhost:18082"
+)
+
+// TestControllerIntegration tests the full integration between controller and services
+func TestControllerIntegration(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping integration tests in short mode")
+	}
+
+	services := NewTestServices(t)
+	defer services.StopAll()
+
+	// Build all services
+	t.Log("Building services...")
+	scraperBin := BuildService(t, "apps/scraper", "scraper-api")
+	analyzerBin := BuildService(t, "apps/textanalyzer", "textanalyzer")
+	controllerBin := BuildService(t, "apps/controller", "controller")
+
+	// Check if Ollama is available
+	ollamaAvailable := services.CheckOllamaAvailable()
+	if ollamaAvailable {
+		t.Log("✓ Ollama is available - will test AI-enhanced features")
+	} else {
+		t.Log("✗ Ollama is not available - will test graceful degradation")
+	}
+
+	// Start services in order
+	scraperConfig := ServiceConfig{
+		Name:        "scraper",
+		Port:        18081,
+		BinaryPath:  scraperBin,
+		Args:        []string{"-addr", ":18081", "-db", services.GetDBPath("scraper")},
+		HealthCheck: scraperURL + "/health",
+	}
+
+	analyzerConfig := ServiceConfig{
+		Name:        "textanalyzer",
+		Port:        18082,
+		BinaryPath:  analyzerBin,
+		Args:        []string{"-port", "18082", "-db", services.GetDBPath("textanalyzer")},
+		HealthCheck: textAnalyzerURL + "/health",
+	}
+
+	controllerConfig := ServiceConfig{
+		Name:        "controller",
+		Port:        18080,
+		BinaryPath:  controllerBin,
+		Env:         []string{
+			"CONTROLLER_PORT=18080",
+			"SCRAPER_BASE_URL=" + scraperURL,
+			"TEXTANALYZER_BASE_URL=" + textAnalyzerURL,
+			"DATABASE_PATH=" + services.GetDBPath("controller"),
+		},
+		HealthCheck: controllerURL + "/health",
+	}
+
+	// Start all services
+	if err := services.StartService(scraperConfig); err != nil {
+		t.Fatalf("Failed to start scraper: %v", err)
+	}
+
+	if err := services.StartService(analyzerConfig); err != nil {
+		t.Fatalf("Failed to start textanalyzer: %v", err)
+	}
+
+	if err := services.StartService(controllerConfig); err != nil {
+		t.Fatalf("Failed to start controller: %v", err)
+	}
+
+	// Run test suite
+	t.Run("DirectTextAnalysis", func(t *testing.T) {
+		testDirectTextAnalysis(t, ollamaAvailable)
+	})
+
+	t.Run("URLScrapeAndAnalysis", func(t *testing.T) {
+		testURLScrapeAndAnalysis(t, ollamaAvailable)
+	})
+
+	t.Run("TagSearch", func(t *testing.T) {
+		testTagSearch(t)
+	})
+
+	t.Run("RequestRetrieval", func(t *testing.T) {
+		testRequestRetrieval(t)
+	})
+}
+
+// testDirectTextAnalysis tests POST /analyze endpoint
+func testDirectTextAnalysis(t *testing.T, ollamaAvailable bool) {
+	testText := `Climate change is a pressing global issue that affects millions of people worldwide.
+Scientists estimate that 75% of species may face extinction if temperatures rise by 2 degrees Celsius.
+This is a critical challenge that requires immediate action from governments and citizens alike.`
+
+	reqBody := map[string]interface{}{
+		"text": testText,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := http.Post(controllerURL+"/api/analyze", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify required fields are present
+	assertFieldExists(t, result, "id")
+	assertFieldExists(t, result, "created_at")
+	assertFieldExists(t, result, "source_type")
+	assertFieldExists(t, result, "textanalyzer_uuid")
+	assertFieldExists(t, result, "tags")
+	assertFieldExists(t, result, "metadata")
+
+	// Verify source type
+	if result["source_type"] != "text" {
+		t.Errorf("Expected source_type 'text', got '%v'", result["source_type"])
+	}
+
+	// Verify metadata structure
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	assertFieldExists(t, metadata, "analyzer_metadata")
+
+	// Verify analyzer_metadata has expected fields
+	analyzerMeta, ok := metadata["analyzer_metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("analyzer_metadata is not a map")
+	}
+
+	// Core metadata fields that should always be present
+	assertFieldExists(t, analyzerMeta, "word_count")
+	assertFieldExists(t, analyzerMeta, "sentiment")
+	assertFieldExists(t, analyzerMeta, "readability_score")
+	assertFieldExists(t, analyzerMeta, "tags")
+
+	// Check tags array is populated
+	tags, ok := result["tags"].([]interface{})
+	if !ok {
+		t.Fatal("tags is not an array")
+	}
+
+	if len(tags) == 0 {
+		t.Error("Expected tags array to have at least one element")
+	}
+
+	// If Ollama is available, check for AI-enhanced fields
+	if ollamaAvailable {
+		t.Log("Checking for AI-enhanced metadata fields...")
+		// Note: These may not always be present depending on Ollama availability
+		// We just log if they're present, don't fail if missing
+		if _, exists := analyzerMeta["synopsis"]; exists {
+			t.Log("✓ Found AI-generated synopsis")
+		}
+		if _, exists := analyzerMeta["ai_detection"]; exists {
+			t.Log("✓ Found AI detection metadata")
+		}
+	}
+
+	t.Logf("✓ Direct text analysis completed successfully (request ID: %v)", result["id"])
+}
+
+// testURLScrapeAndAnalysis tests POST /scrape endpoint
+func testURLScrapeAndAnalysis(t *testing.T, ollamaAvailable bool) {
+	// Use example.com as a reliable test URL
+	testURL := "https://example.com"
+
+	reqBody := map[string]interface{}{
+		"url": testURL,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	// Note: This might take longer due to scraping + AI processing
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Post(controllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify required fields
+	assertFieldExists(t, result, "id")
+	assertFieldExists(t, result, "created_at")
+	assertFieldExists(t, result, "source_type")
+	assertFieldExists(t, result, "source_url")
+	assertFieldExists(t, result, "scraper_uuid")
+	assertFieldExists(t, result, "textanalyzer_uuid")
+	assertFieldExists(t, result, "tags")
+	assertFieldExists(t, result, "metadata")
+
+	// Verify source type and URL
+	if result["source_type"] != "url" {
+		t.Errorf("Expected source_type 'url', got '%v'", result["source_type"])
+	}
+
+	if result["source_url"] != testURL {
+		t.Errorf("Expected source_url '%s', got '%v'", testURL, result["source_url"])
+	}
+
+	// Verify both UUIDs are present and different
+	scraperUUID, ok1 := result["scraper_uuid"].(string)
+	analyzerUUID, ok2 := result["textanalyzer_uuid"].(string)
+
+	if !ok1 || !ok2 {
+		t.Fatal("UUIDs are not strings")
+	}
+
+	if scraperUUID == "" || analyzerUUID == "" {
+		t.Error("UUIDs should not be empty")
+	}
+
+	// Verify metadata structure
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	assertFieldExists(t, metadata, "scraper_metadata")
+	assertFieldExists(t, metadata, "analyzer_metadata")
+
+	// Verify scraper_metadata has expected fields
+	scraperMeta, ok := metadata["scraper_metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("scraper_metadata is not a map")
+	}
+
+	// Note: scraper_metadata may be empty if the scraper doesn't return title/content
+	// The important content is passed to the text analyzer and is available in analyzer_metadata
+	if len(scraperMeta) > 0 {
+		t.Logf("scraper_metadata has %d fields", len(scraperMeta))
+	} else {
+		t.Logf("scraper_metadata is empty (content was passed to analyzer)")
+	}
+
+	// Verify analyzer_metadata
+	analyzerMeta, ok := metadata["analyzer_metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("analyzer_metadata is not a map")
+	}
+
+	assertFieldExists(t, analyzerMeta, "word_count")
+	assertFieldExists(t, analyzerMeta, "sentiment")
+
+	t.Logf("✓ URL scrape and analysis completed successfully (request ID: %v)", result["id"])
+}
+
+// testTagSearch tests POST /search/tags endpoint
+func testTagSearch(t *testing.T) {
+	// First, create some content with known tags
+	testText := "This is a very positive and happy message about technology and programming!"
+
+	reqBody := map[string]interface{}{
+		"text": testText,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := http.Post(controllerURL+"/api/analyze", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	resp.Body.Close()
+
+	// Small delay to ensure data is committed
+	time.Sleep(500 * time.Millisecond)
+
+	// Now search for tags
+	searchReq := map[string]interface{}{
+		"tags":  []string{"positive"},
+		"fuzzy": false,
+	}
+
+	searchBody, err := json.Marshal(searchReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal search request: %v", err)
+	}
+
+	searchResp, err := http.Post(controllerURL+"/api/search", "application/json", bytes.NewReader(searchBody))
+	if err != nil {
+		t.Fatalf("Search request failed: %v", err)
+	}
+	defer searchResp.Body.Close()
+
+	if searchResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(searchResp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", searchResp.StatusCode, string(bodyBytes))
+	}
+
+	var searchResult map[string]interface{}
+	if err := json.NewDecoder(searchResp.Body).Decode(&searchResult); err != nil {
+		t.Fatalf("Failed to decode search response: %v", err)
+	}
+
+	assertFieldExists(t, searchResult, "request_ids")
+	assertFieldExists(t, searchResult, "count")
+
+	count, ok := searchResult["count"].(float64)
+	if !ok {
+		t.Fatal("count is not a number")
+	}
+
+	if count < 1 {
+		t.Error("Expected at least one search result")
+	}
+
+	t.Logf("✓ Tag search completed successfully (found %v results)", count)
+}
+
+// testRequestRetrieval tests GET /requests/{id} and GET /requests endpoints
+func testRequestRetrieval(t *testing.T) {
+	// First, create a request
+	testText := "Sample text for retrieval testing."
+
+	reqBody := map[string]interface{}{
+		"text": testText,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := http.Post(controllerURL+"/api/analyze", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var createResult map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&createResult); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	requestID, ok := createResult["id"].(string)
+	if !ok {
+		t.Fatal("id is not a string")
+	}
+
+	// Test GET /requests/{id}
+	getResp, err := http.Get(fmt.Sprintf("%s/api/requests/%s", controllerURL, requestID))
+	if err != nil {
+		t.Fatalf("Get request failed: %v", err)
+	}
+	defer getResp.Body.Close()
+
+	if getResp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", getResp.StatusCode)
+	}
+
+	var getResult map[string]interface{}
+	if err := json.NewDecoder(getResp.Body).Decode(&getResult); err != nil {
+		t.Fatalf("Failed to decode get response: %v", err)
+	}
+
+	if getResult["id"] != requestID {
+		t.Errorf("Expected id '%s', got '%v'", requestID, getResult["id"])
+	}
+
+	// Test GET /requests (list)
+	listResp, err := http.Get(controllerURL + "/api/requests?limit=10&offset=0")
+	if err != nil {
+		t.Fatalf("List request failed: %v", err)
+	}
+	defer listResp.Body.Close()
+
+	if listResp.StatusCode != http.StatusOK {
+		t.Fatalf("Expected status 200, got %d", listResp.StatusCode)
+	}
+
+	var listResult map[string]interface{}
+	if err := json.NewDecoder(listResp.Body).Decode(&listResult); err != nil {
+		t.Fatalf("Failed to decode list response: %v", err)
+	}
+
+	assertFieldExists(t, listResult, "requests")
+	assertFieldExists(t, listResult, "count")
+
+	t.Log("✓ Request retrieval completed successfully")
+}
+
+// Helper function to assert a field exists in a map
+func assertFieldExists(t *testing.T, m map[string]interface{}, field string) {
+	t.Helper()
+	if _, exists := m[field]; !exists {
+		t.Errorf("Expected field '%s' to exist in response", field)
+	}
+}
