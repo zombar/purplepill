@@ -1,10 +1,11 @@
 .PHONY: help build test clean install fmt lint docker-build docker-up docker-down docker-logs \
-        controller-% scraper-% textanalyzer-%
+        controller-% scraper-% textanalyzer-% web-%
 
 # Submodule directories
 CONTROLLER_DIR=apps/controller
 SCRAPER_DIR=apps/scraper
 TEXTANALYZER_DIR=apps/textanalyzer
+WEB_DIR=apps/web
 
 # Default target
 help: ## Display this help message
@@ -43,6 +44,12 @@ help: ## Display this help message
 	@echo "  textanalyzer-build - Build textanalyzer service"
 	@echo "  textanalyzer-test  - Test textanalyzer service"
 	@echo "  textanalyzer-run   - Run textanalyzer service"
+	@echo "  web-build          - Build web interface"
+	@echo "  web-test           - Test web interface"
+	@echo "  web-test-coverage  - Test web interface with coverage"
+	@echo "  web-lint           - Lint web interface"
+	@echo "  web-dev            - Run web dev server"
+	@echo "  web-install        - Install web dependencies"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  submodule-update   - Update all submodules to latest"
@@ -55,6 +62,7 @@ build: ## Build all services
 	@$(MAKE) -C $(CONTROLLER_DIR) build
 	@$(MAKE) -C $(SCRAPER_DIR) build-api
 	@$(MAKE) -C $(TEXTANALYZER_DIR) build
+	@cd $(WEB_DIR) && npm run build
 	@echo "All services built successfully!"
 
 test: ## Run tests for all services
@@ -62,6 +70,7 @@ test: ## Run tests for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) test
 	@$(MAKE) -C $(SCRAPER_DIR) test
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test
+	@cd $(WEB_DIR) && npm test -- --run
 	@echo "All tests completed!"
 
 test-coverage: ## Run tests with coverage for all services
@@ -69,6 +78,7 @@ test-coverage: ## Run tests with coverage for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) test-coverage
 	@$(MAKE) -C $(SCRAPER_DIR) test-coverage
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test-coverage
+	@cd $(WEB_DIR) && npm run test:coverage -- --run
 	@echo "All coverage reports generated!"
 
 clean: ## Clean build artifacts for all services
@@ -76,6 +86,7 @@ clean: ## Clean build artifacts for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) clean
 	@$(MAKE) -C $(SCRAPER_DIR) clean
 	@$(MAKE) -C $(TEXTANALYZER_DIR) clean
+	@cd $(WEB_DIR) && rm -rf dist
 	@echo "All services cleaned!"
 
 install: ## Install dependencies for all services
@@ -83,6 +94,7 @@ install: ## Install dependencies for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) install
 	@$(MAKE) -C $(SCRAPER_DIR) deps
 	@$(MAKE) -C $(TEXTANALYZER_DIR) install
+	@cd $(WEB_DIR) && npm install
 	@echo "All dependencies installed!"
 
 fmt: ## Format code for all services
@@ -97,6 +109,7 @@ lint: ## Lint code for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) lint
 	@$(MAKE) -C $(SCRAPER_DIR) vet
 	@$(MAKE) -C $(TEXTANALYZER_DIR) lint
+	@cd $(WEB_DIR) && npm run lint
 	@echo "All linting completed!"
 
 # ==================== Docker Commands ====================
@@ -110,6 +123,7 @@ docker-up: ## Start all services with docker-compose
 	@echo "Starting all services..."
 	@docker-compose up -d
 	@echo "All services started!"
+	@echo "Web Interface:  http://localhost:3000"
 	@echo "Controller:     http://localhost:8080"
 	@echo "Scraper API:    http://localhost:8081"
 	@echo "Text Analyzer:  http://localhost:8082"
@@ -181,6 +195,31 @@ textanalyzer-clean:
 textanalyzer-run:
 	@$(MAKE) -C $(TEXTANALYZER_DIR) run
 
+# Web commands
+web-build:
+	@cd $(WEB_DIR) && npm run build
+
+web-test:
+	@cd $(WEB_DIR) && npm test -- --run
+
+web-test-coverage:
+	@cd $(WEB_DIR) && npm run test:coverage -- --run
+
+web-lint:
+	@cd $(WEB_DIR) && npm run lint
+
+web-install:
+	@cd $(WEB_DIR) && npm install
+
+web-dev:
+	@cd $(WEB_DIR) && npm run dev
+
+web-preview:
+	@cd $(WEB_DIR) && npm run preview
+
+web-clean:
+	@cd $(WEB_DIR) && rm -rf dist
+
 # ==================== Utility Commands ====================
 
 submodule-update: ## Update all submodules to latest
@@ -229,3 +268,4 @@ dev: build ## Build and run all services locally (non-Docker)
 	@echo "  Terminal 1: make textanalyzer-run"
 	@echo "  Terminal 2: make scraper-run-api"
 	@echo "  Terminal 3: make controller-run"
+	@echo "  Terminal 4: make web-dev (optional - for UI)"

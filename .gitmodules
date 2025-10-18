@@ -7,3 +7,6 @@
 [submodule "apps/textanalyzer"]
 	path = apps/textanalyzer
 	url = https://github.com/zombar/textanalyzer
+[submodule "apps/web"]
+	path = apps/web
+	url = https://github.com/zombar/purplepill-webui
