@@ -98,6 +98,10 @@ func TestControllerIntegration(t *testing.T) {
 	t.Run("RequestRetrieval", func(t *testing.T) {
 		testRequestRetrieval(t)
 	})
+
+	t.Run("FuzzyImageTagSearch", func(t *testing.T) {
+		testFuzzyImageTagSearch(t, ollamaAvailable)
+	})
 }
 
 // testDirectTextAnalysis tests POST /analyze endpoint
@@ -423,6 +427,126 @@ func testRequestRetrieval(t *testing.T) {
 	assertFieldExists(t, listResult, "count")
 
 	t.Log("✓ Request retrieval completed successfully")
+}
+
+// testFuzzyImageTagSearch tests POST /api/images/search endpoint
+func testFuzzyImageTagSearch(t *testing.T, ollamaAvailable bool) {
+	// First, scrape a URL that contains images
+	// Use example.com as our test URL
+	testURL := "https://example.com"
+
+	reqBody := map[string]interface{}{
+		"url": testURL,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	// Scrape the URL (this will also process images if Ollama is available)
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Post(controllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	// Small delay to ensure images are committed to database
+	time.Sleep(500 * time.Millisecond)
+
+	// Now test the fuzzy image search endpoint
+	// We'll search for common tags that might be present
+	searchReq := map[string]interface{}{
+		"tags": []string{"example", "domain", "illustration"},
+	}
+
+	searchBody, err := json.Marshal(searchReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal search request: %v", err)
+	}
+
+	searchResp, err := client.Post(controllerURL+"/api/images/search", "application/json", bytes.NewReader(searchBody))
+	if err != nil {
+		t.Fatalf("Image search request failed: %v", err)
+	}
+	defer searchResp.Body.Close()
+
+	if searchResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(searchResp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", searchResp.StatusCode, string(bodyBytes))
+	}
+
+	var searchResult map[string]interface{}
+	if err := json.NewDecoder(searchResp.Body).Decode(&searchResult); err != nil {
+		t.Fatalf("Failed to decode search response: %v", err)
+	}
+
+	// Verify response structure
+	assertFieldExists(t, searchResult, "images")
+	assertFieldExists(t, searchResult, "count")
+
+	count, ok := searchResult["count"].(float64)
+	if !ok {
+		t.Fatal("count is not a number")
+	}
+
+	images, ok := searchResult["images"].([]interface{})
+	if !ok {
+		t.Fatal("images is not an array")
+	}
+
+	if ollamaAvailable {
+		// If Ollama is available, we should get images with tags
+		if count > 0 {
+			t.Logf("✓ Fuzzy image tag search found %v images", count)
+
+			// Verify first image has expected fields
+			if len(images) > 0 {
+				firstImage, ok := images[0].(map[string]interface{})
+				if !ok {
+					t.Fatal("First image is not a map")
+				}
+
+				assertFieldExists(t, firstImage, "id")
+				assertFieldExists(t, firstImage, "url")
+				assertFieldExists(t, firstImage, "tags")
+
+				tags, ok := firstImage["tags"].([]interface{})
+				if ok && len(tags) > 0 {
+					t.Logf("✓ Image has tags: %v", tags)
+				}
+			}
+		} else {
+			t.Log("⚠ No images found (this may be expected if example.com has no images or image analysis failed)")
+		}
+	} else {
+		// If Ollama is not available, images won't have AI-generated tags
+		t.Log("✗ Ollama not available - images won't have AI-generated tags")
+		t.Logf("Search returned %v images (may be 0 without tags)", count)
+	}
+
+	// Test empty tags validation
+	emptySearchReq := map[string]interface{}{
+		"tags": []string{},
+	}
+	emptyBody, _ := json.Marshal(emptySearchReq)
+	emptyResp, err := client.Post(controllerURL+"/api/images/search", "application/json", bytes.NewReader(emptyBody))
+	if err != nil {
+		t.Fatalf("Empty search request failed: %v", err)
+	}
+	defer emptyResp.Body.Close()
+
+	if emptyResp.StatusCode != http.StatusBadRequest {
+		t.Errorf("Expected status 400 for empty tags, got %d", emptyResp.StatusCode)
+	}
+
+	t.Log("✓ Fuzzy image tag search completed successfully")
 }
 
 // Helper function to assert a field exists in a map
