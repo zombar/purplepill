@@ -176,6 +176,55 @@ func (m *MockOllamaServer) generateMockResponse(prompt string) string {
 		}`
 	}
 
+	// Link/Content quality scoring (from scraper)
+	if (strings.Contains(promptLower, "content quality assessment") && strings.Contains(promptLower, "webpage")) ||
+	   (strings.Contains(promptLower, "ingested into a knowledge database") || strings.Contains(promptLower, "knowledge database")) {
+		// Determine score based on URL in the prompt
+		score := 0.8
+		reason := "The webpage contains informative content suitable for knowledge database ingestion."
+		categories := []string{"informational", "reference"}
+
+		if strings.Contains(promptLower, "social") || strings.Contains(promptLower, "facebook") ||
+		   strings.Contains(promptLower, "twitter") || strings.Contains(promptLower, "instagram") {
+			score = 0.2
+			reason = "Social media platform detected - not suitable for knowledge database."
+			categories = []string{"social_media", "low_quality"}
+		}
+
+		return fmt.Sprintf(`{
+			"score": %f,
+			"reason": "%s",
+			"categories": %s,
+			"malicious_indicators": []
+		}`, score, reason, mustMarshalJSON(categories))
+	}
+
+	// Text quality scoring (from textanalyzer)
+	if strings.Contains(promptLower, "text and determine its quality") ||
+	   (strings.Contains(promptLower, "quality_indicators") && strings.Contains(promptLower, "problems_detected")) {
+		score := 0.75
+		reason := "The text is well-written, informative, and provides valuable content."
+		categories := []string{"informative", "well_written"}
+		qualityIndicators := []string{"clear_structure", "good_grammar", "valuable_insights"}
+		problemsDetected := []string{}
+
+		if strings.Contains(promptLower, "spam") || len(prompt) < 200 {
+			score = 0.3
+			reason = "The text appears to be low quality or spam."
+			categories = []string{"low_quality"}
+			qualityIndicators = []string{}
+			problemsDetected = []string{"too_short", "spam_like"}
+		}
+
+		return fmt.Sprintf(`{
+			"score": %f,
+			"reason": "%s",
+			"categories": %s,
+			"quality_indicators": %s,
+			"problems_detected": %s
+		}`, score, reason, mustMarshalJSON(categories), mustMarshalJSON(qualityIndicators), mustMarshalJSON(problemsDetected))
+	}
+
 	// Image analysis
 	if strings.Contains(promptLower, "analyze this image") {
 		return `{
@@ -196,4 +245,13 @@ func (m *MockOllamaServer) generateMockResponse(prompt string) string {
 // formatAddr formats a port number into an address string
 func formatAddr(port int) string {
 	return fmt.Sprintf(":%d", port)
+}
+
+// mustMarshalJSON marshals a value to JSON, panicking on error (for test code only)
+func mustMarshalJSON(v interface{}) string {
+	b, err := json.Marshal(v)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal JSON: %v", err))
+	}
+	return string(b)
 }
