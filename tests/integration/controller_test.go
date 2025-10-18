@@ -44,7 +44,8 @@ func TestControllerIntegration(t *testing.T) {
 		Name:        "scraper",
 		Port:        18081,
 		BinaryPath:  scraperBin,
-		Args:        []string{"-addr", ":18081", "-db", services.GetDBPath("scraper")},
+		Args:        []string{"-port", "18081", "-db", services.GetDBPath("scraper")},
+		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
 		HealthCheck: scraperURL + "/health",
 	}
 
@@ -53,6 +54,7 @@ func TestControllerIntegration(t *testing.T) {
 		Port:        18082,
 		BinaryPath:  analyzerBin,
 		Args:        []string{"-port", "18082", "-db", services.GetDBPath("textanalyzer")},
+		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
 		HealthCheck: textAnalyzerURL + "/health",
 	}
 
