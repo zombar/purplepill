@@ -104,6 +104,14 @@ func TestControllerIntegration(t *testing.T) {
 	t.Run("FuzzyImageTagSearch", func(t *testing.T) {
 		testFuzzyImageTagSearch(t, ollamaAvailable)
 	})
+
+	t.Run("LinkScoring", func(t *testing.T) {
+		testLinkScoring(t, ollamaAvailable)
+	})
+
+	t.Run("AutomaticScoringOnScrape", func(t *testing.T) {
+		testAutomaticScoringOnScrape(t, ollamaAvailable)
+	})
 }
 
 // testDirectTextAnalysis tests POST /analyze endpoint
@@ -233,8 +241,6 @@ func testURLScrapeAndAnalysis(t *testing.T, ollamaAvailable bool) {
 	assertFieldExists(t, result, "created_at")
 	assertFieldExists(t, result, "source_type")
 	assertFieldExists(t, result, "source_url")
-	assertFieldExists(t, result, "scraper_uuid")
-	assertFieldExists(t, result, "textanalyzer_uuid")
 	assertFieldExists(t, result, "tags")
 	assertFieldExists(t, result, "metadata")
 
@@ -247,51 +253,136 @@ func testURLScrapeAndAnalysis(t *testing.T, ollamaAvailable bool) {
 		t.Errorf("Expected source_url '%s', got '%v'", testURL, result["source_url"])
 	}
 
-	// Verify both UUIDs are present and different
-	scraperUUID, ok1 := result["scraper_uuid"].(string)
-	analyzerUUID, ok2 := result["textanalyzer_uuid"].(string)
-
-	if !ok1 || !ok2 {
-		t.Fatal("UUIDs are not strings")
-	}
-
-	if scraperUUID == "" || analyzerUUID == "" {
-		t.Error("UUIDs should not be empty")
-	}
-
 	// Verify metadata structure
 	metadata, ok := result["metadata"].(map[string]interface{})
 	if !ok {
 		t.Fatal("metadata is not a map")
 	}
 
-	assertFieldExists(t, metadata, "scraper_metadata")
-	assertFieldExists(t, metadata, "analyzer_metadata")
-
-	// Verify scraper_metadata has expected fields
-	scraperMeta, ok := metadata["scraper_metadata"].(map[string]interface{})
+	// Verify link_score is present in metadata
+	assertFieldExists(t, metadata, "link_score")
+	linkScore, ok := metadata["link_score"].(map[string]interface{})
 	if !ok {
-		t.Fatal("scraper_metadata is not a map")
+		t.Fatal("link_score is not a map")
 	}
 
-	// Note: scraper_metadata may be empty if the scraper doesn't return title/content
-	// The important content is passed to the text analyzer and is available in analyzer_metadata
-	if len(scraperMeta) > 0 {
-		t.Logf("scraper_metadata has %d fields", len(scraperMeta))
+	// Verify link_score has expected fields
+	assertFieldExists(t, linkScore, "score")
+	assertFieldExists(t, linkScore, "reason")
+	assertFieldExists(t, linkScore, "categories")
+	assertFieldExists(t, linkScore, "is_recommended")
+
+	// Verify score is a valid number between 0.0 and 1.0
+	scoreValue, ok := linkScore["score"].(float64)
+	if !ok {
+		t.Error("link_score.score is not a float64")
+	} else if scoreValue < 0.0 || scoreValue > 1.0 {
+		t.Errorf("link_score.score should be between 0.0 and 1.0, got %f", scoreValue)
+	}
+
+	// Check if the URL was fully processed based on score
+	if scoreValue >= 0.5 {
+		t.Logf("✓ High-quality URL (score: %.2f) - checking for full processing", scoreValue)
+
+		// Should have scraper and analyzer UUIDs
+		assertFieldExists(t, result, "scraper_uuid")
+		assertFieldExists(t, result, "textanalyzer_uuid")
+
+		// Verify both UUIDs are present and different
+		scraperUUID, ok1 := result["scraper_uuid"].(string)
+		analyzerUUID, ok2 := result["textanalyzer_uuid"].(string)
+
+		if !ok1 || !ok2 {
+			t.Fatal("UUIDs are not strings")
+		}
+
+		if scraperUUID == "" || analyzerUUID == "" {
+			t.Error("UUIDs should not be empty")
+		}
+
+		// Should have both scraper and analyzer metadata
+		assertFieldExists(t, metadata, "scraper_metadata")
+		assertFieldExists(t, metadata, "analyzer_metadata")
+
+		// Verify scraper_metadata
+		scraperMeta, ok := metadata["scraper_metadata"].(map[string]interface{})
+		if !ok {
+			t.Fatal("scraper_metadata is not a map")
+		}
+
+		// Note: scraper_metadata may be empty if the scraper doesn't return title/content
+		if len(scraperMeta) > 0 {
+			t.Logf("scraper_metadata has %d fields", len(scraperMeta))
+		} else {
+			t.Logf("scraper_metadata is empty (content was passed to analyzer)")
+		}
+
+		// Verify analyzer_metadata
+		analyzerMeta, ok := metadata["analyzer_metadata"].(map[string]interface{})
+		if !ok {
+			t.Fatal("analyzer_metadata is not a map")
+		}
+
+		assertFieldExists(t, analyzerMeta, "word_count")
+		assertFieldExists(t, analyzerMeta, "sentiment")
+
+		// If Ollama is available, verify quality_score in analyzer_metadata
+		if ollamaAvailable {
+			if qualityScore, exists := analyzerMeta["quality_score"]; exists {
+				qualityScoreMap, ok := qualityScore.(map[string]interface{})
+				if !ok {
+					t.Log("⚠ quality_score exists but is not a map")
+				} else {
+					assertFieldExists(t, qualityScoreMap, "score")
+					assertFieldExists(t, qualityScoreMap, "reason")
+					assertFieldExists(t, qualityScoreMap, "is_recommended")
+
+					// Verify quality score is within valid range
+					qScore, ok := qualityScoreMap["score"].(float64)
+					if !ok {
+						t.Error("quality_score.score is not a float64")
+					} else if qScore < 0.0 || qScore > 1.0 {
+						t.Errorf("quality_score.score should be between 0.0 and 1.0, got %f", qScore)
+					} else {
+						t.Logf("✓ Text quality score: %.2f (recommended: %v)", qScore, qualityScoreMap["is_recommended"])
+					}
+				}
+			} else {
+				t.Log("⚠ quality_score not present in analyzer_metadata (Ollama may have failed)")
+			}
+		}
+
+		// Should NOT have below_threshold flag
+		if belowThreshold, exists := metadata["below_threshold"]; exists && belowThreshold == true {
+			t.Error("Expected below_threshold to be false or absent for high-quality URL")
+		}
 	} else {
-		t.Logf("scraper_metadata is empty (content was passed to analyzer)")
+		t.Logf("✓ Low-quality URL (score: %.2f) - checking for metadata-only response", scoreValue)
+
+		// Should NOT have scraper or analyzer UUIDs
+		if scraperUUID, exists := result["scraper_uuid"]; exists && scraperUUID != nil && scraperUUID != "" {
+			t.Error("Expected scraper_uuid to be nil or empty for low-quality URL")
+		}
+		if analyzerUUID, exists := result["textanalyzer_uuid"]; exists && analyzerUUID != nil && analyzerUUID != "" {
+			t.Error("Expected textanalyzer_uuid to be nil or empty for low-quality URL")
+		}
+
+		// Should have below_threshold flag
+		assertFieldExists(t, metadata, "below_threshold")
+		if belowThreshold, ok := metadata["below_threshold"].(bool); !ok || !belowThreshold {
+			t.Error("Expected below_threshold to be true for low-quality URL")
+		}
+
+		// Should NOT have scraper or analyzer metadata
+		if _, exists := metadata["scraper_metadata"]; exists {
+			t.Error("Expected scraper_metadata to be absent for low-quality URL")
+		}
+		if _, exists := metadata["analyzer_metadata"]; exists {
+			t.Error("Expected analyzer_metadata to be absent for low-quality URL")
+		}
 	}
 
-	// Verify analyzer_metadata
-	analyzerMeta, ok := metadata["analyzer_metadata"].(map[string]interface{})
-	if !ok {
-		t.Fatal("analyzer_metadata is not a map")
-	}
-
-	assertFieldExists(t, analyzerMeta, "word_count")
-	assertFieldExists(t, analyzerMeta, "sentiment")
-
-	t.Logf("✓ URL scrape and analysis completed successfully (request ID: %v)", result["id"])
+	t.Logf("✓ URL scrape and analysis completed successfully (request ID: %v, link score: %.2f)", result["id"], scoreValue)
 }
 
 // testTagSearch tests POST /search/tags endpoint
@@ -549,6 +640,187 @@ func testFuzzyImageTagSearch(t *testing.T, ollamaAvailable bool) {
 	}
 
 	t.Log("✓ Fuzzy image tag search completed successfully")
+}
+
+// testLinkScoring tests the /api/score endpoint
+func testLinkScoring(t *testing.T, ollamaAvailable bool) {
+	if !ollamaAvailable {
+		t.Skip("Skipping link scoring test - Ollama not available")
+	}
+
+	client := &http.Client{Timeout: 60 * time.Second}
+
+	// Test scoring a good URL (example.com should score reasonably well)
+	scoreReq := map[string]interface{}{
+		"url": "https://example.com",
+	}
+	body, err := json.Marshal(scoreReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := client.Post(controllerURL+"/api/score", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Score request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify response structure
+	assertFieldExists(t, result, "url")
+	assertFieldExists(t, result, "score")
+	assertFieldExists(t, result, "meets_threshold")
+	assertFieldExists(t, result, "threshold")
+
+	// Verify score object
+	score, ok := result["score"].(map[string]interface{})
+	if !ok {
+		t.Fatal("score is not a map")
+	}
+
+	assertFieldExists(t, score, "score")
+	assertFieldExists(t, score, "reason")
+	assertFieldExists(t, score, "categories")
+	assertFieldExists(t, score, "is_recommended")
+	assertFieldExists(t, score, "malicious_indicators")
+
+	// Verify score is a valid number between 0 and 1
+	scoreValue, ok := score["score"].(float64)
+	if !ok {
+		t.Fatal("score value is not a number")
+	}
+	if scoreValue < 0.0 || scoreValue > 1.0 {
+		t.Errorf("Score should be between 0.0 and 1.0, got %f", scoreValue)
+	}
+
+	// Verify threshold
+	threshold, ok := result["threshold"].(float64)
+	if !ok {
+		t.Fatal("threshold is not a number")
+	}
+	if threshold != 0.5 {
+		t.Logf("Note: Threshold is %f (expected default 0.5)", threshold)
+	}
+
+	t.Logf("✓ Link scoring completed successfully (score: %.2f, meets_threshold: %v)",
+		scoreValue, result["meets_threshold"])
+}
+
+// testAutomaticScoringOnScrape tests that scrape requests automatically score URLs
+func testAutomaticScoringOnScrape(t *testing.T, ollamaAvailable bool) {
+	if !ollamaAvailable {
+		t.Skip("Skipping automatic scoring test - Ollama not available")
+	}
+
+	client := &http.Client{Timeout: 120 * time.Second}
+
+	// Test scraping example.com - should have high score and be fully processed
+	scrapeReq := map[string]interface{}{
+		"url": "https://example.com",
+	}
+	body, err := json.Marshal(scrapeReq)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := client.Post(controllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Scrape request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify basic response structure
+	assertFieldExists(t, result, "id")
+	assertFieldExists(t, result, "metadata")
+
+	// Verify metadata contains link_score
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	assertFieldExists(t, metadata, "link_score")
+	linkScore, ok := metadata["link_score"].(map[string]interface{})
+	if !ok {
+		t.Fatal("link_score is not a map")
+	}
+
+	// Verify link score structure
+	assertFieldExists(t, linkScore, "score")
+	assertFieldExists(t, linkScore, "reason")
+	assertFieldExists(t, linkScore, "categories")
+
+	scoreValue, ok := linkScore["score"].(float64)
+	if !ok {
+		t.Fatal("score value is not a number")
+	}
+
+	// Check if this was a high-quality URL that was fully processed
+	if scoreValue >= 0.5 {
+		t.Logf("✓ High-quality URL (score: %.2f) - checking for full processing", scoreValue)
+
+		// Should have scraper and analyzer data
+		if _, exists := result["scraper_uuid"]; !exists {
+			t.Error("Expected scraper_uuid for high-quality URL")
+		}
+		if _, exists := result["textanalyzer_uuid"]; !exists {
+			t.Error("Expected textanalyzer_uuid for high-quality URL")
+		}
+
+		// Should have both scraper and analyzer metadata
+		assertFieldExists(t, metadata, "scraper_metadata")
+		assertFieldExists(t, metadata, "analyzer_metadata")
+
+		// Should NOT have below_threshold flag
+		if belowThreshold, exists := metadata["below_threshold"]; exists && belowThreshold == true {
+			t.Error("Expected below_threshold to be false or absent for high-quality URL")
+		}
+	} else {
+		t.Logf("✓ Low-quality URL (score: %.2f) - checking for metadata-only response", scoreValue)
+
+		// Should NOT have scraper or analyzer UUIDs
+		if scraperUUID, exists := result["scraper_uuid"]; exists && scraperUUID != nil {
+			t.Error("Expected scraper_uuid to be nil for low-quality URL")
+		}
+		if analyzerUUID, exists := result["textanalyzer_uuid"]; exists && analyzerUUID != "" {
+			t.Error("Expected textanalyzer_uuid to be empty for low-quality URL")
+		}
+
+		// Should have below_threshold flag
+		assertFieldExists(t, metadata, "below_threshold")
+		if belowThreshold, ok := metadata["below_threshold"].(bool); !ok || !belowThreshold {
+			t.Error("Expected below_threshold to be true for low-quality URL")
+		}
+
+		// Should NOT have scraper or analyzer metadata
+		if _, exists := metadata["scraper_metadata"]; exists {
+			t.Error("Expected scraper_metadata to be absent for low-quality URL")
+		}
+		if _, exists := metadata["analyzer_metadata"]; exists {
+			t.Error("Expected analyzer_metadata to be absent for low-quality URL")
+		}
+	}
+
+	t.Logf("✓ Automatic scoring on scrape completed successfully (score: %.2f)", scoreValue)
 }
 
 // Helper function to assert a field exists in a map
