@@ -4,15 +4,17 @@ A microservices-based web content processing platform built in Go. The system sc
 
 ## Architecture
 
-PurplePill consists of three services that work together:
+PurplePill consists of four services that work together:
 
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
 - **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API and tag-based search
+- **Web** - React-based web interface for content ingestion, search, and viewing
 
 ```
 ┌──────────┐
-│  Client  │
+│   Web    │
+│ Port 3000│
 └────┬─────┘
      │
      v
@@ -66,6 +68,7 @@ make docker-down
 ```
 
 The services will be available at:
+- Web Interface: http://localhost:3000
 - Controller: http://localhost:8080
 - Scraper: http://localhost:8081
 - TextAnalyzer: http://localhost:8082
@@ -86,6 +89,7 @@ make test
 make textanalyzer-run    # Terminal 1
 make scraper-run-api     # Terminal 2
 make controller-run      # Terminal 3
+make web-dev             # Terminal 4 (optional - for UI)
 ```
 
 ## Configuration
@@ -112,6 +116,9 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 - `OLLAMA_URL` - Ollama API URL
 - `OLLAMA_MODEL` - Ollama model name
 
+**Web:**
+- `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:8080)
+
 ## Service Documentation
 
 Detailed documentation for each service:
@@ -119,6 +126,7 @@ Detailed documentation for each service:
 - [Controller](apps/controller/README.md) - Orchestration service with unified API
 - [Scraper](apps/scraper/README.md) - Web scraping with AI content extraction
 - [TextAnalyzer](apps/textanalyzer/README.md) - Comprehensive text analysis
+- [Web](apps/web/README.md) - React-based web interface
 
 API reference documentation:
 
@@ -136,6 +144,7 @@ make build              # Build all services
 make controller-build   # Build controller only
 make scraper-build      # Build scraper only
 make textanalyzer-build # Build textanalyzer only
+make web-build          # Build web interface
 
 # Test commands
 make test               # Run all tests
@@ -143,6 +152,9 @@ make test-coverage      # Generate coverage reports
 make controller-test    # Test controller only
 make scraper-test       # Test scraper only
 make textanalyzer-test  # Test textanalyzer only
+make web-test           # Test web interface
+make web-test-coverage  # Test web with coverage
+make web-lint           # Lint web interface
 
 # Code quality
 make fmt                # Format all code
@@ -182,11 +194,15 @@ purplepill/
 │   │   ├── api/          # API server
 │   │   ├── README.md     # Service documentation
 │   │   └── API.md        # API reference
-│   └── textanalyzer/     # Text analysis service
-│       ├── cmd/          # Application entry point
-│       ├── internal/     # Internal packages
-│       ├── README.md     # Service documentation
-│       └── API.md        # API reference
+│   ├── textanalyzer/     # Text analysis service
+│   │   ├── cmd/          # Application entry point
+│   │   ├── internal/     # Internal packages
+│   │   ├── README.md     # Service documentation
+│   │   └── API.md        # API reference
+│   └── web/              # Web interface
+│       ├── src/          # React source code
+│       ├── public/       # Static assets
+│       └── README.md     # Service documentation
 ├── docker-compose.yml    # Docker orchestration
 ├── Makefile              # Build automation
 └── README.md             # This file

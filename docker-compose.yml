@@ -85,6 +85,30 @@ services:
     networks:
       - purplepill-network
 
+  # Web UI Service
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    container_name: purplepill-web
+    ports:
+      - "3000:80"
+    environment:
+      # API URL for frontend (set at build time in Vite)
+      - CONTROLLER_API_URL=http://controller:8080
+    restart: unless-stopped
+    depends_on:
+      controller:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - purplepill-network
+
 volumes:
   controller-data:
     driver: local
