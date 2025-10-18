@@ -72,7 +72,8 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		Name:        "scraper",
 		Port:        18081,
 		BinaryPath:  scraperBin,
-		Args:        []string{"-addr", ":18081", "-db", services.GetDBPath("scraper")},
+		Args:        []string{"-port", "18081", "-db", services.GetDBPath("scraper")},
+		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
 		HealthCheck: scraperURL + "/health",
 	}
 
@@ -81,6 +82,7 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		Port:        18082,
 		BinaryPath:  analyzerBin,
 		Args:        []string{"-port", "18082", "-db", services.GetDBPath("textanalyzer")},
+		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
 		HealthCheck: textAnalyzerURL + "/health",
 	}
 

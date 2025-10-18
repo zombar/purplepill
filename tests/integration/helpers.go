@@ -23,10 +23,12 @@ type ServiceConfig struct {
 
 // TestServices manages the lifecycle of test services
 type TestServices struct {
-	t          *testing.T
-	processes  map[string]*exec.Cmd
-	ollamaUp   bool
-	tempDBDir  string
+	t              *testing.T
+	processes      map[string]*exec.Cmd
+	ollamaUp       bool
+	tempDBDir      string
+	mockOllama     *MockOllamaServer
+	mockOllamaPort int
 }
 
 // NewTestServices creates a new test services manager
@@ -36,11 +38,17 @@ func NewTestServices(t *testing.T) *TestServices {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}
 
-	return &TestServices{
-		t:         t,
-		processes: make(map[string]*exec.Cmd),
-		tempDBDir: tempDir,
+	ts := &TestServices{
+		t:              t,
+		processes:      make(map[string]*exec.Cmd),
+		tempDBDir:      tempDir,
+		mockOllamaPort: 11435, // Use port 11435 to avoid conflict with real Ollama
 	}
+
+	// Start mock Ollama server
+	ts.startMockOllama()
+
+	return ts
 }
 
 // StartService starts a service and waits for it to be healthy
@@ -93,6 +101,9 @@ func (ts *TestServices) StopAll() {
 		ts.StopService(name)
 	}
 
+	// Stop mock Ollama server
+	ts.stopMockOllama()
+
 	// Clean up temp directory
 	if ts.tempDBDir != "" {
 		_ = os.RemoveAll(ts.tempDBDir)
@@ -127,20 +138,24 @@ func (ts *TestServices) waitForHealth(healthURL string, timeout time.Duration) e
 }
 
 // CheckOllamaAvailable checks if Ollama is running
+// In test mode, this always returns true since we use the mock server
 func (ts *TestServices) CheckOllamaAvailable() bool {
 	if ts.ollamaUp {
 		return true
 	}
 
-	client := &http.Client{Timeout: 2 * time.Second}
-	resp, err := client.Get("http://localhost:11434/api/tags")
-	if err == nil && resp.StatusCode == http.StatusOK {
-		resp.Body.Close()
-		ts.ollamaUp = true
-		return true
-	}
-	if resp != nil {
-		resp.Body.Close()
+	// Check if mock Ollama server is running
+	if ts.mockOllama != nil {
+		client := &http.Client{Timeout: 2 * time.Second}
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/api/tags", ts.mockOllamaPort))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			ts.ollamaUp = true
+			return true
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 
 	return false
@@ -192,4 +207,51 @@ func GetProjectRoot(t *testing.T) string {
 	}
 
 	return root
+}
+
+// startMockOllama starts the mock Ollama server
+func (ts *TestServices) startMockOllama() {
+	ts.t.Logf("Starting mock Ollama server on port %d...", ts.mockOllamaPort)
+
+	ts.mockOllama = NewMockOllamaServer(ts.mockOllamaPort)
+	if err := ts.mockOllama.Start(); err != nil {
+		ts.t.Fatalf("Failed to start mock Ollama server: %v", err)
+	}
+
+	// Wait for server to be ready
+	time.Sleep(100 * time.Millisecond)
+
+	// Verify it's running
+	client := &http.Client{Timeout: 2 * time.Second}
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		resp, err := client.Get(fmt.Sprintf("http://localhost:%d/api/tags", ts.mockOllamaPort))
+		if err == nil && resp.StatusCode == http.StatusOK {
+			resp.Body.Close()
+			ts.t.Log("Mock Ollama server started successfully")
+			return
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	ts.t.Fatal("Mock Ollama server failed to become ready")
+}
+
+// stopMockOllama stops the mock Ollama server
+func (ts *TestServices) stopMockOllama() {
+	if ts.mockOllama != nil {
+		ts.t.Log("Stopping mock Ollama server...")
+		if err := ts.mockOllama.Stop(); err != nil {
+			ts.t.Logf("Error stopping mock Ollama server: %v", err)
+		}
+		ts.mockOllama = nil
+	}
+}
+
+// GetOllamaURL returns the URL for the Ollama server (mock in tests)
+func (ts *TestServices) GetOllamaURL() string {
+	return fmt.Sprintf("http://localhost:%d", ts.mockOllamaPort)
 }
