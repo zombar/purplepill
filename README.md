@@ -8,8 +8,8 @@ PurplePill consists of four services that work together:
 
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
-- **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API and tag-based search
-- **Web** - React-based web interface for content ingestion, search, and viewing
+- **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, and tag-based search
+- **Web** - React-based web interface for content ingestion with real-time progress tracking, search, and viewing
 
 ```
 ┌──────────┐
