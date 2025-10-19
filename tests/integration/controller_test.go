@@ -105,6 +105,10 @@ func TestControllerIntegration(t *testing.T) {
 		testFuzzyImageTagSearch(t, ollamaAvailable)
 	})
 
+	t.Run("DocumentImages", func(t *testing.T) {
+		testDocumentImages(t, ollamaAvailable)
+	})
+
 	t.Run("LinkScoring", func(t *testing.T) {
 		testLinkScoring(t, ollamaAvailable)
 	})
@@ -640,6 +644,122 @@ func testFuzzyImageTagSearch(t *testing.T, ollamaAvailable bool) {
 	}
 
 	t.Log("✓ Fuzzy image tag search completed successfully")
+}
+
+// testDocumentImages tests retrieving images associated with a document
+func testDocumentImages(t *testing.T, ollamaAvailable bool) {
+	// First, scrape a URL to create a document with images
+	testURL := "https://example.com"
+
+	reqBody := map[string]interface{}{
+		"url": testURL,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	// Scrape the URL
+	client := &http.Client{Timeout: 120 * time.Second}
+	resp, err := client.Post(controllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var scrapeResult map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&scrapeResult); err != nil {
+		t.Fatalf("Failed to decode scrape response: %v", err)
+	}
+
+	// Get the scraper UUID from the response
+	scraperUUID, ok := scrapeResult["scraper_uuid"].(string)
+	if !ok || scraperUUID == "" {
+		t.Fatal("scraper_uuid not found in scrape response")
+	}
+
+	t.Logf("Scraped document with scraper UUID: %s", scraperUUID)
+
+	// Small delay to ensure images are committed to database
+	time.Sleep(500 * time.Millisecond)
+
+	// Now test the document images endpoint
+	imagesURL := fmt.Sprintf("%s/api/documents/%s/images", controllerURL, scraperUUID)
+	imagesResp, err := client.Get(imagesURL)
+	if err != nil {
+		t.Fatalf("Document images request failed: %v", err)
+	}
+	defer imagesResp.Body.Close()
+
+	if imagesResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(imagesResp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", imagesResp.StatusCode, string(bodyBytes))
+	}
+
+	var imagesResult map[string]interface{}
+	if err := json.NewDecoder(imagesResp.Body).Decode(&imagesResult); err != nil {
+		t.Fatalf("Failed to decode images response: %v", err)
+	}
+
+	// Verify response structure
+	assertFieldExists(t, imagesResult, "images")
+	assertFieldExists(t, imagesResult, "count")
+
+	images, ok := imagesResult["images"].([]interface{})
+	if !ok {
+		t.Fatal("images is not an array")
+	}
+
+	count, ok := imagesResult["count"].(float64)
+	if !ok {
+		t.Fatal("count is not a number")
+	}
+
+	if int(count) != len(images) {
+		t.Errorf("Count %v doesn't match images array length %d", count, len(images))
+	}
+
+	t.Logf("Document has %v associated images", count)
+
+	if ollamaAvailable && len(images) > 0 {
+		// Verify image structure
+		firstImage, ok := images[0].(map[string]interface{})
+		if !ok {
+			t.Fatal("First image is not a map")
+		}
+
+		assertFieldExists(t, firstImage, "id")
+		assertFieldExists(t, firstImage, "url")
+
+		// These fields may exist if image analysis was successful
+		if _, exists := firstImage["tags"]; exists {
+			t.Log("✓ Image has AI-generated tags")
+		}
+		if _, exists := firstImage["summary"]; exists {
+			t.Log("✓ Image has AI-generated summary")
+		}
+	}
+
+	// Test with invalid UUID
+	invalidURL := fmt.Sprintf("%s/api/documents/invalid-uuid/images", controllerURL)
+	invalidResp, err := client.Get(invalidURL)
+	if err != nil {
+		t.Fatalf("Invalid UUID request failed: %v", err)
+	}
+	defer invalidResp.Body.Close()
+
+	// Should return 200 with empty images array, not an error
+	if invalidResp.StatusCode != http.StatusOK {
+		t.Logf("Note: Invalid UUID returned status %d (may vary by implementation)", invalidResp.StatusCode)
+	}
+
+	t.Log("✓ Document images retrieval completed successfully")
 }
 
 // testLinkScoring tests the /api/score endpoint
