@@ -1,6 +1,6 @@
 # Integration Tests
 
-Comprehensive integration tests for the PurplePill microservices platform.
+Comprehensive integration tests for the PurpleTab microservices platform.
 
 ## Overview
 
@@ -234,7 +234,7 @@ Benchmarks fail if:
 **Solutions:**
 - Each test run uses temporary databases
 - Old temp databases should auto-clean
-- Manually clean `/tmp/purplepill-integration-*` if needed
+- Manually clean `/tmp/purpletab-integration-*` if needed
 
 ## Extending Tests
 

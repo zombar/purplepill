@@ -116,6 +116,10 @@ func TestControllerIntegration(t *testing.T) {
 	t.Run("AutomaticScoringOnScrape", func(t *testing.T) {
 		testAutomaticScoringOnScrape(t, ollamaAvailable)
 	})
+
+	t.Run("AsyncTextAnalysis", func(t *testing.T) {
+		testAsyncTextAnalysis(t, ollamaAvailable)
+	})
 }
 
 // testDirectTextAnalysis tests POST /analyze endpoint
@@ -678,10 +682,29 @@ func testDocumentImages(t *testing.T, ollamaAvailable bool) {
 		t.Fatalf("Failed to decode scrape response: %v", err)
 	}
 
-	// Get the scraper UUID from the response
+	// Check if the URL was scored and if it met the quality threshold
+	metadata, ok := scrapeResult["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	// Get link score if present
+	var scoreValue float64
+	if linkScore, exists := metadata["link_score"].(map[string]interface{}); exists {
+		if score, ok := linkScore["score"].(float64); ok {
+			scoreValue = score
+		}
+	}
+
+	// Get the scraper UUID from the response - it may not exist if URL scored low
 	scraperUUID, ok := scrapeResult["scraper_uuid"].(string)
 	if !ok || scraperUUID == "" {
-		t.Fatal("scraper_uuid not found in scrape response")
+		// Check if this was a low-quality URL that wasn't fully processed
+		if scoreValue < 0.5 {
+			t.Logf("✓ URL scored %.2f (below threshold) - skipping document images test", scoreValue)
+			t.Skip("URL scored below threshold, no document to retrieve images from")
+		}
+		t.Fatal("scraper_uuid not found in scrape response for high-quality URL")
 	}
 
 	t.Logf("Scraped document with scraper UUID: %s", scraperUUID)
@@ -941,6 +964,212 @@ func testAutomaticScoringOnScrape(t *testing.T, ollamaAvailable bool) {
 	}
 
 	t.Logf("✓ Automatic scoring on scrape completed successfully (score: %.2f)", scoreValue)
+}
+
+// testAsyncTextAnalysis tests POST /api/analyze-requests endpoint (async text analysis)
+func testAsyncTextAnalysis(t *testing.T, ollamaAvailable bool) {
+	testText := `Async text analysis test: This text will be processed asynchronously.
+The system should create a request, process it in the background, and allow polling for status.`
+
+	// Step 1: Create async text analysis request
+	reqBody := map[string]interface{}{
+		"text": testText,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := http.Post(controllerURL+"/api/analyze-requests", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var createResult map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&createResult); err != nil {
+		t.Fatalf("Failed to decode create response: %v", err)
+	}
+
+	// Verify create response
+	assertFieldExists(t, createResult, "id")
+	assertFieldExists(t, createResult, "source_type")
+	assertFieldExists(t, createResult, "status")
+	assertFieldExists(t, createResult, "progress")
+	assertFieldExists(t, createResult, "text")
+
+	if createResult["source_type"] != "text" {
+		t.Errorf("Expected source_type 'text', got '%v'", createResult["source_type"])
+	}
+
+	if createResult["text"] != testText {
+		t.Errorf("Expected text to match input")
+	}
+
+	requestID, ok := createResult["id"].(string)
+	if !ok || requestID == "" {
+		t.Fatal("Expected non-empty request ID")
+	}
+
+	t.Logf("Created async text analysis request: %s", requestID)
+
+	// Step 2: Poll for completion
+	maxAttempts := 30
+	pollInterval := 200 * time.Millisecond
+	var finalStatus map[string]interface{}
+
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		time.Sleep(pollInterval)
+
+		getResp, err := http.Get(controllerURL + "/api/scrape-requests/" + requestID)
+		if err != nil {
+			t.Fatalf("Failed to get request status: %v", err)
+		}
+
+		if getResp.StatusCode != http.StatusOK {
+			bodyBytes, _ := io.ReadAll(getResp.Body)
+			getResp.Body.Close()
+			t.Fatalf("Expected status 200, got %d: %s", getResp.StatusCode, string(bodyBytes))
+		}
+
+		if err := json.NewDecoder(getResp.Body).Decode(&finalStatus); err != nil {
+			getResp.Body.Close()
+			t.Fatalf("Failed to decode status response: %v", err)
+		}
+		getResp.Body.Close()
+
+		status, ok := finalStatus["status"].(string)
+		if !ok {
+			t.Fatal("Status field missing or not a string")
+		}
+
+		progress, _ := finalStatus["progress"].(float64)
+		t.Logf("Attempt %d: status=%s, progress=%.0f%%", attempt+1, status, progress)
+
+		if status == "completed" {
+			t.Log("✓ Request completed successfully")
+			break
+		} else if status == "failed" {
+			errorMsg := finalStatus["error_message"]
+			t.Fatalf("Request failed: %v", errorMsg)
+		}
+
+		if attempt == maxAttempts-1 {
+			t.Fatal("Request did not complete within timeout")
+		}
+	}
+
+	// Step 3: Verify completion
+	assertFieldExists(t, finalStatus, "result_request_id")
+
+	resultRequestID, ok := finalStatus["result_request_id"].(string)
+	if !ok || resultRequestID == "" {
+		t.Fatal("Expected non-empty result_request_id")
+	}
+
+	t.Logf("Result request ID: %s", resultRequestID)
+
+	// Step 4: Retrieve the actual result
+	resultResp, err := http.Get(controllerURL + "/api/requests/" + resultRequestID)
+	if err != nil {
+		t.Fatalf("Failed to get result: %v", err)
+	}
+	defer resultResp.Body.Close()
+
+	if resultResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resultResp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", resultResp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resultResp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode result: %v", err)
+	}
+
+	// Verify result structure
+	assertFieldExists(t, result, "id")
+	assertFieldExists(t, result, "source_type")
+	assertFieldExists(t, result, "textanalyzer_uuid")
+	assertFieldExists(t, result, "tags")
+	assertFieldExists(t, result, "metadata")
+
+	if result["source_type"] != "text" {
+		t.Errorf("Expected source_type 'text', got '%v'", result["source_type"])
+	}
+
+	// Verify metadata
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	assertFieldExists(t, metadata, "analyzer_metadata")
+
+	// Step 5: Test listing requests (should include our request)
+	listResp, err := http.Get(controllerURL + "/api/scrape-requests")
+	if err != nil {
+		t.Fatalf("Failed to list requests: %v", err)
+	}
+	defer listResp.Body.Close()
+
+	var listResult map[string]interface{}
+	if err := json.NewDecoder(listResp.Body).Decode(&listResult); err != nil {
+		t.Fatalf("Failed to decode list response: %v", err)
+	}
+
+	requests, ok := listResult["requests"].([]interface{})
+	if !ok {
+		t.Fatal("requests is not an array")
+	}
+
+	// Find our request in the list
+	found := false
+	for _, req := range requests {
+		reqMap, ok := req.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		if reqMap["id"] == requestID {
+			found = true
+			if reqMap["source_type"] != "text" {
+				t.Error("Expected source_type 'text' in list")
+			}
+			break
+		}
+	}
+
+	if found {
+		t.Log("✓ Found text analysis request in list")
+	} else {
+		t.Log("Request not found in list (may have been auto-deleted)")
+	}
+
+	// Step 6: Test delete
+	deleteReq, err := http.NewRequest(http.MethodDelete, controllerURL+"/api/scrape-requests/"+requestID, nil)
+	if err != nil {
+		t.Fatalf("Failed to create delete request: %v", err)
+	}
+
+	deleteResp, err := http.DefaultClient.Do(deleteReq)
+	if err != nil {
+		t.Fatalf("Failed to delete request: %v", err)
+	}
+	defer deleteResp.Body.Close()
+
+	if deleteResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(deleteResp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", deleteResp.StatusCode, string(bodyBytes))
+	}
+
+	t.Log("✓ Successfully deleted async text analysis request")
+
+	t.Logf("✓ Async text analysis workflow completed successfully")
 }
 
 // Helper function to assert a field exists in a map

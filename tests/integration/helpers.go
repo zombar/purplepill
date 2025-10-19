@@ -33,7 +33,7 @@ type TestServices struct {
 
 // NewTestServices creates a new test services manager
 func NewTestServices(t *testing.T) *TestServices {
-	tempDir, err := os.MkdirTemp("", "purplepill-integration-*")
+	tempDir, err := os.MkdirTemp("", "purpletab-integration-*")
 	if err != nil {
 		t.Fatalf("Failed to create temp directory: %v", err)
 	}

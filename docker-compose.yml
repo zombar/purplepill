@@ -12,7 +12,7 @@ services:
       - DB_PATH=/data/textanalyzer.db
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
-      - OLLAMA_MODEL=gpt-oss:20b
+      - OLLAMA_MODEL=gemma3:12b
     volumes:
       - textanalyzer-data:/data
     restart: unless-stopped
@@ -37,7 +37,8 @@ services:
       - PORT=8080
       - DB_PATH=/app/data/scraper.db
       - OLLAMA_URL=http://100.64.0.2:11434
-      - OLLAMA_MODEL=gpt-oss:20b
+      - OLLAMA_MODEL=gemma3:12b
+      # - OLLAMA_VISION_MODEL=gemma3.12b
     volumes:
       - scraper-data:/app/data
     command: [

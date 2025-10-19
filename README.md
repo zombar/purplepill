@@ -1,10 +1,10 @@
-# PurplePill
+# PurpleTab
 
 A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
 
 ## Architecture
 
-PurplePill consists of four services that work together:
+PurpleTab consists of four services that work together:
 
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
