@@ -4,7 +4,7 @@ services:
     build:
       context: ./apps/textanalyzer
       dockerfile: Dockerfile
-    container_name: purplepill-textanalyzer
+    container_name: purpletab-textanalyzer
     ports:
       - "8082:8080"
     environment:
@@ -23,14 +23,14 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - purplepill-network
+      - purpletab-network
 
   # Scraper Service
   scraper:
     build:
       context: ./apps/scraper
       dockerfile: Dockerfile
-    container_name: purplepill-scraper
+    container_name: purpletab-scraper
     ports:
       - "8081:8080"
     environment:
@@ -52,14 +52,14 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - purplepill-network
+      - purpletab-network
 
   # Controller Service
   controller:
     build:
       context: ./apps/controller
       dockerfile: Dockerfile
-    container_name: purplepill-controller
+    container_name: purpletab-controller
     ports:
       - "8080:8080"
     environment:
@@ -69,6 +69,8 @@ services:
       # Controller configuration
       - CONTROLLER_PORT=8080
       - DATABASE_PATH=/app/data/controller.db
+      # Mock data generation (set to "true" to generate 14 days of test data)
+      - GENERATE_MOCK_DATA=true
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
@@ -84,14 +86,14 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - purplepill-network
+      - purpletab-network
 
   # Web UI Service
   web:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
-    container_name: purplepill-web
+    container_name: purpletab-web
     ports:
       - "3000:80"
     environment:
@@ -108,7 +110,7 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - purplepill-network
+      - purpletab-network
 
 volumes:
   controller-data:
@@ -119,6 +121,6 @@ volumes:
     driver: local
 
 networks:
-  purplepill-network:
-    name: purplepill-network
+  purpletab-network:
+    name: purpletab-network
     driver: bridge
