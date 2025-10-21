@@ -9,4 +9,7 @@
 	url = https://github.com/zombar/textanalyzer
 [submodule "apps/web"]
 	path = apps/web
-	url = git@github.com:zombar/purplepill-webui.git
+	url = https://github.com/zombar/purplepill-webui
+[submodule "apps/scheduler"]
+	path = apps/scheduler
+	url = git@github.com:zombar/scheduler.git
