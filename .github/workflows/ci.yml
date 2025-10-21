@@ -6,10 +6,14 @@ on:
   pull_request:
     branches: [ main, master, develop ]
 
+permissions:
+  contents: read
+
 jobs:
   # Detect which apps have changed
   detect-changes:
     runs-on: ubuntu-latest
+    environment: CI
     outputs:
       controller: ${{ steps.filter.outputs.controller }}
       scraper: ${{ steps.filter.outputs.scraper }}
@@ -37,6 +41,7 @@ jobs:
   # Test Go controller app
   test-controller:
     needs: detect-changes
+    environment: CI
     if: needs.detect-changes.outputs.controller == 'true'
     runs-on: ubuntu-latest
     defaults:
@@ -63,6 +68,7 @@ jobs:
   # Test Go scraper app
   test-scraper:
     needs: detect-changes
+    environment: CI
     if: needs.detect-changes.outputs.scraper == 'true'
     runs-on: ubuntu-latest
     defaults:
@@ -115,6 +121,7 @@ jobs:
   # Test JavaScript/React web app
   test-web:
     needs: detect-changes
+    environment: CI
     if: needs.detect-changes.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
