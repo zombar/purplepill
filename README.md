@@ -1,9 +1,7 @@
 # PurpleTab
 
 [![CI](https://github.com/zombar/purpletab/actions/workflows/ci.yml/badge.svg)](https://github.com/zombar/purpletab/actions/workflows/ci.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/zombar/purpletab)](https://goreportcard.com/report/github.com/zombar/purpletab)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Go Version](https://img.shields.io/github/go-mod/go-version/zombar/purpletab)](go.mod)
 [![GitHub issues](https://img.shields.io/github/issues/zombar/purpletab)](https://github.com/zombar/purpletab/issues)
 [![GitHub stars](https://img.shields.io/github/stars/zombar/purpletab?style=social)](https://github.com/zombar/purpletab/stargazers)
 
