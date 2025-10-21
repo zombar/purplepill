@@ -4,11 +4,12 @@ A microservices-based web content processing platform built in Go. The system sc
 
 ## Architecture
 
-PurpleTab consists of four services that work together:
+PurpleTab consists of five services that work together:
 
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
 - **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, and tag-based search
+- **Scheduler** - Manages scheduled tasks for automated scraping and database maintenance using cron expressions
 - **Web** - React-based web interface for content ingestion with real-time progress tracking, search, and viewing
 
 ```
@@ -139,6 +140,7 @@ Detailed documentation for each service:
 - [Controller](apps/controller/README.md) - Orchestration service with unified API
 - [Scraper](apps/scraper/README.md) - Web scraping with AI content extraction
 - [TextAnalyzer](apps/textanalyzer/README.md) - Comprehensive text analysis
+- [Scheduler](apps/scheduler/README.md) - Scheduled task management
 - [Web](apps/web/README.md) - React-based web interface
 
 API reference documentation:
@@ -191,7 +193,7 @@ make help               # Show all available commands
 ### Project Structure
 
 ```
-purplepill/
+purpletab/
 ├── apps/
 │   ├── controller/       # Orchestration service
 │   │   ├── cmd/          # Application entry point
@@ -212,6 +214,12 @@ purplepill/
 │   │   ├── internal/     # Internal packages
 │   │   ├── README.md     # Service documentation
 │   │   └── API.md        # API reference
+│   ├── scheduler/        # Scheduled task service
+│   │   ├── cmd/          # Application entry point
+│   │   ├── models/       # Data models
+│   │   ├── db/           # Database layer
+│   │   ├── api/          # API server
+│   │   └── README.md     # Service documentation
 │   └── web/              # Web interface
 │       ├── src/          # React source code
 │       ├── public/       # Static assets
