@@ -12,4 +12,4 @@
 	url = https://github.com/zombar/purplepill-webui
 [submodule "apps/scheduler"]
 	path = apps/scheduler
-	url = https://github.com/zombar/scheduler
+	url = git@github.com:zombar/purplepill-webui.git
