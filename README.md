@@ -1,5 +1,12 @@
 # PurpleTab
 
+[![CI](https://github.com/zombar/purpletab/actions/workflows/ci.yml/badge.svg)](https://github.com/zombar/purpletab/actions/workflows/ci.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/zombar/purpletab)](https://goreportcard.com/report/github.com/zombar/purpletab)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/zombar/purpletab)](go.mod)
+[![GitHub issues](https://img.shields.io/github/issues/zombar/purpletab)](https://github.com/zombar/purpletab/issues)
+[![GitHub stars](https://img.shields.io/github/stars/zombar/purpletab?style=social)](https://github.com/zombar/purpletab/stargazers)
+
 A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
 
 ## Architecture
@@ -293,6 +300,37 @@ To migrate to PostgreSQL:
 1. Update database connection strings in service configurations
 2. Modify SQL migration syntax (AUTOINCREMENT → SERIAL, DATETIME → TIMESTAMP)
 3. Add PostgreSQL driver dependencies
+
+## Project Stats
+
+### Code Metrics
+
+![GitHub code size](https://img.shields.io/github/languages/code-size/zombar/purpletab)
+![Lines of code](https://img.shields.io/tokei/lines/github/zombar/purpletab)
+![GitHub last commit](https://img.shields.io/github/last-commit/zombar/purpletab)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/zombar/purpletab)
+
+### Service Test Coverage
+
+| Service | Tests | Coverage |
+|---------|-------|----------|
+| Controller | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
+| Scraper | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
+| TextAnalyzer | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
+| Scheduler | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | 1,393 LOC |
+| Web | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
+
+### Language Breakdown
+
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=zombar&repo=purpletab&layout=compact&theme=dark)
+
+### Repository Activity
+
+![GitHub Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=zombar&repo=purpletab&theme=github-compact)
+
+### Contributors
+
+[![Contributors](https://contrib.rocks/image?repo=zombar/purpletab)](https://github.com/zombar/purpletab/graphs/contributors)
 
 ## Production Considerations
 
