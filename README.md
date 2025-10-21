@@ -92,6 +92,19 @@ make controller-run      # Terminal 3
 make web-dev             # Terminal 4 (optional - for UI)
 ```
 
+**Web UI with hot reload:**
+
+```bash
+# Run backend services in Docker
+docker-compose up -d controller scraper textanalyzer
+
+# Run web UI locally with hot reload
+cd apps/web
+npm install
+npm run dev
+# Access at http://localhost:5173
+```
+
 ## Configuration
 
 ### Docker Compose
@@ -236,6 +249,22 @@ make test-benchmark
 # Run all tests (unit + integration)
 make test-all
 ```
+
+### Continuous Integration
+
+GitHub Actions workflows automatically run tests on every commit:
+
+- **CI Workflow** - Detects changed services and runs only affected tests
+- **Per-Service Workflows** - Individual workflows for each service with coverage reporting
+- Workflows trigger on push/PR to main/master/develop branches
+- Matrix testing: Go 1.21, Node.js 18-20
+
+Workflows are located in `.github/workflows/`:
+- `ci.yml` - Smart monorepo CI that tests only changed apps
+- `test-controller.yml` - Controller tests (Go)
+- `test-scraper.yml` - Scraper tests (Go)
+- `test-textanalyzer.yml` - TextAnalyzer tests (Go)
+- `test-web.yml` - Web interface tests (Node.js/React)
 
 #### Integration Tests
 
