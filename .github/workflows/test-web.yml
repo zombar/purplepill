@@ -1,0 +1,64 @@
+name: Test Web
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'apps/web/**'
+    branches: [ main, master, develop ]
+  pull_request:
+    paths:
+      - 'apps/web/**'
+    branches: [ main, master, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+
+    strategy:
+      matrix:
+        node-version: ['18', '20']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint code (if configured)
+        run: npm run lint --if-present
+        continue-on-error: true
+
+      - name: Type check (if configured)
+        run: npm run type-check --if-present
+        continue-on-error: true
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run tests with coverage
+        run: npm run test:coverage --if-present
+        continue-on-error: true
+
+      - name: Build application
+        run: npm run build
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.node-version == '20'
+        with:
+          files: ./apps/web/coverage/coverage-final.json
+          flags: web
+          name: web-coverage
+        continue-on-error: true
