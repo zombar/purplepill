@@ -10,3 +10,6 @@
 [submodule "apps/web"]
 	path = apps/web
 	url = https://github.com/zombar/purplepill-webui
+[submodule "apps/scheduler"]
+	path = apps/scheduler
+	url = https://github.com/zombar/scheduler

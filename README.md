@@ -1,15 +1,16 @@
 # PurpleTab
 
-A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
+A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, performs comprehensive text analysis, and automates routine tasks via scheduling.
 
 ## Architecture
 
-PurpleTab consists of four services that work together:
+PurpleTab consists of five services that work together:
 
-- **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
+- **Scraper** - Fetches web pages and extracts content, images, links, and metadata using Ollama AI models
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
-- **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, and tag-based search
-- **Web** - React-based web interface for content ingestion with real-time progress tracking, search, and viewing
+- **Scheduler** - Executes scheduled tasks including routine scrapes (with optional link extraction) and SQL maintenance operations
+- **Controller** - Orchestrates all services, providing a unified API, asynchronous scrape request tracking, and tag-based search
+- **Web** - React-based web interface for content ingestion with real-time progress tracking, scheduled task management, search, and viewing
 
 ```
 ┌──────────┐
@@ -18,10 +19,10 @@ PurpleTab consists of four services that work together:
 └────┬─────┘
      │
      v
-┌────────────┐       ┌──────────┐
-│ Controller │──────>│ Scraper  │
-│  Port 8080 │       │Port 8081 │
-└────┬───────┘       └──────────┘
+┌────────────┐       ┌──────────┐       ┌───────────┐
+│ Controller │──────>│ Scraper  │──────>│ Scheduler │
+│  Port 8080 │       │Port 8081 │       │Port 8083  │
+└────┬───────┘       └──────────┘       └───────────┘
      │
      v              ┌──────────────┐
      └─────────────>│TextAnalyzer  │
@@ -72,6 +73,7 @@ The services will be available at:
 - Controller: http://localhost:8080
 - Scraper: http://localhost:8081
 - TextAnalyzer: http://localhost:8082
+- Scheduler: http://localhost:8083
 
 ### Local Development
 
@@ -114,7 +116,9 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 **Controller:**
 - `SCRAPER_BASE_URL` - Scraper service URL (default: http://scraper:8080)
 - `TEXTANALYZER_BASE_URL` - TextAnalyzer service URL (default: http://textanalyzer:8080)
+- `SCHEDULER_BASE_URL` - Scheduler service URL (default: http://scheduler:8080)
 - `DATABASE_PATH` - SQLite database path
+- `LINK_SCORE_THRESHOLD` - Minimum score for link recommendation (default: 0.5)
 
 **Scraper:**
 - `PORT` - HTTP server port
@@ -129,6 +133,12 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 - `OLLAMA_URL` - Ollama API URL
 - `OLLAMA_MODEL` - Ollama model name
 
+**Scheduler:**
+- `PORT` - HTTP server port (default: 8080)
+- `DB_PATH` - Scheduler database path
+- `CONTROLLER_DB_PATH` - Controller database path (for SQL tasks)
+- `SCRAPER_URL` - Scraper service URL for executing scrape tasks
+
 **Web:**
 - `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:8080)
 
@@ -139,6 +149,7 @@ Detailed documentation for each service:
 - [Controller](apps/controller/README.md) - Orchestration service with unified API
 - [Scraper](apps/scraper/README.md) - Web scraping with AI content extraction
 - [TextAnalyzer](apps/textanalyzer/README.md) - Comprehensive text analysis
+- [Scheduler](apps/scheduler/README.md) - Task scheduling with cron-based automation
 - [Web](apps/web/README.md) - React-based web interface
 
 API reference documentation:
@@ -146,6 +157,10 @@ API reference documentation:
 - [Controller API](apps/controller/API.md)
 - [Scraper API](apps/scraper/API.md)
 - [TextAnalyzer API](apps/textanalyzer/API.md)
+
+Implementation documentation:
+
+- [Scheduler Implementation](SCHEDULER_IMPLEMENTATION.md) - Scheduler service architecture and design
 
 ## Development
 
@@ -191,7 +206,7 @@ make help               # Show all available commands
 ### Project Structure
 
 ```
-purplepill/
+purpletab/
 ├── apps/
 │   ├── controller/       # Orchestration service
 │   │   ├── cmd/          # Application entry point
@@ -207,6 +222,13 @@ purplepill/
 │   │   ├── api/          # API server
 │   │   ├── README.md     # Service documentation
 │   │   └── API.md        # API reference
+│   ├── scheduler/        # Task scheduling service
+│   │   ├── cmd/          # Application entry point
+│   │   ├── models/       # Task data models
+│   │   ├── db/           # Database layer
+│   │   ├── api/          # API server
+│   │   ├── scheduler.go  # Core scheduling logic
+│   │   └── README.md     # Service documentation
 │   ├── textanalyzer/     # Text analysis service
 │   │   ├── cmd/          # Application entry point
 │   │   ├── internal/     # Internal packages

@@ -56,6 +56,38 @@ services:
     networks:
       - purpletab-network
 
+  # Scheduler Service
+  scheduler:
+    image: localhost/purpletab-scheduler:latest
+    build:
+      context: ./apps/scheduler
+      dockerfile: Dockerfile
+    container_name: purpletab-scheduler
+    ports:
+      - "8083:8080"
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/scheduler.db
+      - CONTROLLER_DB_PATH=/app/data/controller/controller.db
+      - SCRAPER_URL=http://scraper:8080
+    volumes:
+      - scheduler-data:/app/data
+      - controller-data:/app/data/controller:ro  # Read-only access to controller DB
+    restart: unless-stopped
+    depends_on:
+      controller:
+        condition: service_healthy
+      scraper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - purpletab-network
+
   # Controller Service
   controller:
     image: localhost/purpletab-controller:latest
@@ -69,6 +101,7 @@ services:
       # Service URLs - internal network references
       - SCRAPER_BASE_URL=http://scraper:8080
       - TEXTANALYZER_BASE_URL=http://textanalyzer:8080
+      - SCHEDULER_BASE_URL=http://scheduler:8080
       # Controller configuration
       - CONTROLLER_PORT=8080
       - DATABASE_PATH=/app/data/controller.db
@@ -122,6 +155,8 @@ volumes:
   scraper-data:
     driver: local
   textanalyzer-data:
+    driver: local
+  scheduler-data:
     driver: local
 
 networks:
