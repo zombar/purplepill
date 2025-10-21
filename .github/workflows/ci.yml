@@ -17,6 +17,8 @@ jobs:
       web: ${{ steps.filter.outputs.web }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: dorny/paths-filter@v3
         id: filter
@@ -41,11 +43,13 @@ jobs:
         working-directory: apps/controller
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.24.9'
           cache-dependency-path: apps/controller/go.sum
 
       - name: Install dependencies
@@ -64,11 +68,13 @@ jobs:
         working-directory: apps/scraper
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.24.9'
           cache-dependency-path: apps/scraper/go.sum
 
       - name: Install dependencies
@@ -87,11 +93,13 @@ jobs:
         working-directory: apps/textanalyzer
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.24.9'
           cache-dependency-path: apps/textanalyzer/go.sum
 
       - name: Install dependencies
@@ -110,11 +118,13 @@ jobs:
         working-directory: apps/web
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
           cache-dependency-path: apps/web/package-lock.json
 
