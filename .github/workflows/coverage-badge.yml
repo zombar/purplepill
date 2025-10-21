@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         service: [controller, scraper, textanalyzer, scheduler]
-        
+
     environment: CI
     steps:
       - uses: actions/checkout@v4
@@ -67,6 +67,7 @@ jobs:
       run:
         working-directory: apps/web
 
+    environment: CI
     steps:
       - uses: actions/checkout@v4
         with:
