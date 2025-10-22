@@ -1,0 +1,177 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ main, master, develop ]
+  pull_request:
+    branches: [ main, master, develop ]
+  # Allow manual triggering
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-latest
+    environment: CI
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.9'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+
+      - name: Build Docker images
+        run: |
+          echo "Building all Docker images..."
+          docker compose build
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+
+      - name: Start services
+        run: |
+          echo "Starting all services with Docker Compose..."
+          docker compose up -d
+          echo "Waiting for services to be ready..."
+          sleep 10
+
+      - name: Check service health
+        run: |
+          echo "Checking service health..."
+
+          # Controller health check
+          for i in {1..30}; do
+            if curl -f http://localhost:9080/health > /dev/null 2>&1; then
+              echo "✓ Controller is healthy"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ Controller health check failed"
+              docker compose logs controller
+              exit 1
+            fi
+            echo "Waiting for controller... ($i/30)"
+            sleep 2
+          done
+
+          # Scraper health check
+          for i in {1..30}; do
+            if curl -f http://localhost:9081/health > /dev/null 2>&1; then
+              echo "✓ Scraper is healthy"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ Scraper health check failed"
+              docker compose logs scraper
+              exit 1
+            fi
+            echo "Waiting for scraper... ($i/30)"
+            sleep 2
+          done
+
+          # TextAnalyzer health check
+          for i in {1..30}; do
+            if curl -f http://localhost:9082/health > /dev/null 2>&1; then
+              echo "✓ TextAnalyzer is healthy"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "✗ TextAnalyzer health check failed"
+              docker compose logs textanalyzer
+              exit 1
+            fi
+            echo "Waiting for textanalyzer... ($i/30)"
+            sleep 2
+          done
+
+      - name: Run integration tests
+        run: |
+          echo "Running integration tests..."
+          cd tests/integration
+          go test -v -timeout 10m
+        env:
+          # Integration tests will use these default URLs
+          CONTROLLER_URL: http://localhost:9080
+          SCRAPER_URL: http://localhost:9081
+          TEXTANALYZER_URL: http://localhost:9082
+
+      - name: Display service logs on failure
+        if: failure()
+        run: |
+          echo "=== Controller Logs ==="
+          docker compose logs controller
+          echo ""
+          echo "=== Scraper Logs ==="
+          docker compose logs scraper
+          echo ""
+          echo "=== TextAnalyzer Logs ==="
+          docker compose logs textanalyzer
+
+      - name: Stop services
+        if: always()
+        run: |
+          echo "Stopping all services..."
+          docker compose down -v
+          echo "Services stopped"
+
+  # Run benchmarks separately (only on main branch)
+  benchmark-tests:
+    runs-on: ubuntu-latest
+    environment: CI
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24.9'
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and start services
+        run: |
+          docker compose build
+          docker compose up -d
+          sleep 15
+
+      - name: Run benchmark tests
+        run: |
+          echo "Running benchmark/load tests..."
+          cd tests/integration
+          BENCHMARK=true go test -v -timeout 15m -run TestBenchmark
+        env:
+          CONTROLLER_URL: http://localhost:9080
+          SCRAPER_URL: http://localhost:9081
+          TEXTANALYZER_URL: http://localhost:9082
+
+      - name: Stop services
+        if: always()
+        run: docker compose down -v

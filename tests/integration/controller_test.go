@@ -120,6 +120,10 @@ func TestControllerIntegration(t *testing.T) {
 	t.Run("AsyncTextAnalysis", func(t *testing.T) {
 		testAsyncTextAnalysis(t, ollamaAvailable)
 	})
+
+	t.Run("SEOWorkflow", func(t *testing.T) {
+		testSEOWorkflow(t, ollamaAvailable)
+	})
 }
 
 // testDirectTextAnalysis tests POST /analyze endpoint
@@ -1170,6 +1174,299 @@ The system should create a request, process it in the background, and allow poll
 	t.Log("✓ Successfully deleted async text analysis request")
 
 	t.Logf("✓ Async text analysis workflow completed successfully")
+}
+
+// testSEOWorkflow tests the SEO features including slug generation, content serving, and sitemaps
+func testSEOWorkflow(t *testing.T, ollamaAvailable bool) {
+	client := &http.Client{Timeout: 120 * time.Second}
+
+	// Step 1: Scrape a URL which should generate a slug
+	testURL := "https://example.com"
+	reqBody := map[string]interface{}{
+		"url": testURL,
+	}
+
+	body, err := json.Marshal(reqBody)
+	if err != nil {
+		t.Fatalf("Failed to marshal request: %v", err)
+	}
+
+	resp, err := client.Post(controllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("Scrape request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 201, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var scrapeResult map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&scrapeResult); err != nil {
+		t.Fatalf("Failed to decode scrape response: %v", err)
+	}
+
+	// Step 2: Verify the response contains metadata with slug information
+	assertFieldExists(t, scrapeResult, "metadata")
+	metadata, ok := scrapeResult["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	// Check if the URL was scored above threshold
+	var scoreValue float64
+	if linkScore, exists := metadata["link_score"].(map[string]interface{}); exists {
+		if score, ok := linkScore["score"].(float64); ok {
+			scoreValue = score
+		}
+	}
+
+	// If URL scored below threshold, skip SEO content tests
+	if scoreValue < 0.5 {
+		t.Logf("URL scored %.2f (below threshold) - skipping content serving tests", scoreValue)
+		// Still test sitemap and robots.txt with whatever data exists
+	} else {
+		t.Logf("URL scored %.2f - proceeding with full SEO workflow test", scoreValue)
+
+		// Get scraper metadata which should contain slug information
+		scraperMeta, ok := metadata["scraper_metadata"].(map[string]interface{})
+		if !ok {
+			t.Fatal("scraper_metadata is not a map")
+		}
+
+		// The slug might be in the scraper metadata
+		t.Logf("Scraper metadata: %+v", scraperMeta)
+
+		// Small delay to ensure data is fully committed
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	// Step 3: Test robots.txt endpoint
+	robotsResp, err := client.Get(controllerURL + "/robots.txt")
+	if err != nil {
+		t.Fatalf("Robots.txt request failed: %v", err)
+	}
+	defer robotsResp.Body.Close()
+
+	if robotsResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(robotsResp.Body)
+		t.Fatalf("Expected status 200 for robots.txt, got %d: %s", robotsResp.StatusCode, string(bodyBytes))
+	}
+
+	robotsBody, err := io.ReadAll(robotsResp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read robots.txt body: %v", err)
+	}
+
+	robotsContent := string(robotsBody)
+	if !bytes.Contains([]byte(robotsContent), []byte("User-agent: *")) {
+		t.Error("robots.txt should contain 'User-agent: *'")
+	}
+	if !bytes.Contains([]byte(robotsContent), []byte("Sitemap:")) {
+		t.Error("robots.txt should contain Sitemap URL")
+	}
+
+	t.Log("✓ robots.txt served correctly")
+
+	// Step 4: Test sitemap.xml endpoint
+	sitemapResp, err := client.Get(controllerURL + "/sitemap.xml")
+	if err != nil {
+		t.Fatalf("Sitemap request failed: %v", err)
+	}
+	defer sitemapResp.Body.Close()
+
+	if sitemapResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(sitemapResp.Body)
+		t.Fatalf("Expected status 200 for sitemap.xml, got %d: %s", sitemapResp.StatusCode, string(bodyBytes))
+	}
+
+	sitemapBody, err := io.ReadAll(sitemapResp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read sitemap body: %v", err)
+	}
+
+	sitemapContent := string(sitemapBody)
+	if !bytes.Contains([]byte(sitemapContent), []byte("<?xml")) {
+		t.Error("sitemap.xml should be valid XML")
+	}
+	if !bytes.Contains([]byte(sitemapContent), []byte("<urlset")) {
+		t.Error("sitemap.xml should contain <urlset> tag")
+	}
+
+	// Verify content-type header
+	contentType := sitemapResp.Header.Get("Content-Type")
+	if !bytes.Contains([]byte(contentType), []byte("xml")) {
+		t.Errorf("Expected XML content-type, got: %s", contentType)
+	}
+
+	t.Log("✓ sitemap.xml served correctly")
+
+	// Step 5: Try to retrieve requests and find one with a slug
+	listResp, err := http.Get(controllerURL + "/api/requests?limit=100&offset=0")
+	if err != nil {
+		t.Fatalf("List request failed: %v", err)
+	}
+	defer listResp.Body.Close()
+
+	var listResult map[string]interface{}
+	if err := json.NewDecoder(listResp.Body).Decode(&listResult); err != nil {
+		t.Fatalf("Failed to decode list response: %v", err)
+	}
+
+	requests, ok := listResult["requests"].([]interface{})
+	if !ok {
+		t.Fatal("requests is not an array")
+	}
+
+	// Find a request with a slug
+	var testSlug string
+	for _, req := range requests {
+		reqMap, ok := req.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Check if the request has a slug field
+		if slug, ok := reqMap["slug"].(string); ok && slug != "" {
+			testSlug = slug
+			t.Logf("Found request with slug: %s", slug)
+			break
+		}
+	}
+
+	// Step 6: Test image sitemap endpoint
+	imageSitemapResp, err := client.Get(controllerURL + "/images-sitemap.xml")
+	if err != nil {
+		t.Fatalf("Image sitemap request failed: %v", err)
+	}
+	defer imageSitemapResp.Body.Close()
+
+	if imageSitemapResp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(imageSitemapResp.Body)
+		t.Fatalf("Expected status 200 for images-sitemap.xml, got %d: %s", imageSitemapResp.StatusCode, string(bodyBytes))
+	}
+
+	imageSitemapBody, err := io.ReadAll(imageSitemapResp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read image sitemap body: %v", err)
+	}
+
+	imageSitemapContent := string(imageSitemapBody)
+	if !bytes.Contains([]byte(imageSitemapContent), []byte("<?xml")) {
+		t.Error("images-sitemap.xml should be valid XML")
+	}
+	if !bytes.Contains([]byte(imageSitemapContent), []byte("<urlset")) {
+		t.Error("images-sitemap.xml should contain <urlset> tag")
+	}
+	if !bytes.Contains([]byte(imageSitemapContent), []byte("xmlns:image=")) {
+		t.Error("images-sitemap.xml should contain image namespace")
+	}
+
+	// Verify content-type header
+	imageContentType := imageSitemapResp.Header.Get("Content-Type")
+	if !bytes.Contains([]byte(imageContentType), []byte("xml")) {
+		t.Errorf("Expected XML content-type for image sitemap, got: %s", imageContentType)
+	}
+
+	t.Log("✓ images-sitemap.xml served correctly")
+
+	// Step 7: Verify robots.txt includes image sitemap
+	if !bytes.Contains([]byte(robotsContent), []byte("images-sitemap.xml")) {
+		t.Error("robots.txt should reference images-sitemap.xml")
+	}
+
+	// Step 8: Test content serving endpoint (if we have a slug)
+	if testSlug != "" {
+		contentResp, err := client.Get(fmt.Sprintf("%s/content/%s", controllerURL, testSlug))
+		if err != nil {
+			t.Fatalf("Content request failed: %v", err)
+		}
+		defer contentResp.Body.Close()
+
+		if contentResp.StatusCode == http.StatusOK {
+			contentBody, err := io.ReadAll(contentResp.Body)
+			if err != nil {
+				t.Fatalf("Failed to read content body: %v", err)
+			}
+
+			contentHTML := string(contentBody)
+			if !bytes.Contains([]byte(contentHTML), []byte("<!DOCTYPE html>")) {
+				t.Error("Content page should be valid HTML")
+			}
+			if !bytes.Contains([]byte(contentHTML), []byte("<meta")) {
+				t.Error("Content page should contain meta tags")
+			}
+			if !bytes.Contains([]byte(contentHTML), []byte("og:")) {
+				t.Error("Content page should contain Open Graph tags")
+			}
+			if !bytes.Contains([]byte(contentHTML), []byte("schema.org")) {
+				t.Error("Content page should contain JSON-LD structured data")
+			}
+
+			t.Logf("✓ SEO content page served correctly for slug: %s", testSlug)
+		} else if contentResp.StatusCode == http.StatusNotFound {
+			t.Logf("Content endpoint returned 404 (slug may not exist in DB yet)")
+		} else {
+			t.Logf("Content endpoint returned status %d", contentResp.StatusCode)
+		}
+	} else {
+		t.Log("⚠ No slug available to test content serving endpoint (this is expected if no high-quality URLs were scraped)")
+	}
+
+	// Step 9: Test Scraper file serving endpoints if we scraped content
+	if scoreValue >= 0.5 && scrapeResult["scraper_uuid"] != nil {
+		scraperUUID, _ := scrapeResult["scraper_uuid"].(string)
+		if scraperUUID != "" {
+			t.Logf("Testing file serving endpoints for scraper UUID: %s", scraperUUID)
+
+			// Test content file serving
+			contentFileResp, err := client.Get(fmt.Sprintf("%s/api/scrapes/%s/content", scraperURL, scraperUUID))
+			if err != nil {
+				t.Logf("⚠ Content file request failed: %v", err)
+			} else {
+				defer contentFileResp.Body.Close()
+				if contentFileResp.StatusCode == http.StatusOK {
+					t.Log("✓ Scraper content file endpoint accessible")
+				} else {
+					t.Logf("Content file endpoint returned status %d", contentFileResp.StatusCode)
+				}
+			}
+
+			// Test images endpoint
+			imagesResp, err := client.Get(fmt.Sprintf("%s/api/scrapes/%s/images", scraperURL, scraperUUID))
+			if err != nil {
+				t.Logf("⚠ Images list request failed: %v", err)
+			} else {
+				defer imagesResp.Body.Close()
+				if imagesResp.StatusCode == http.StatusOK {
+					var imagesData map[string]interface{}
+					if err := json.NewDecoder(imagesResp.Body).Decode(&imagesData); err == nil {
+						if images, ok := imagesData["images"].([]interface{}); ok && len(images) > 0 {
+							// Try to fetch the first image file
+							if firstImg, ok := images[0].(map[string]interface{}); ok {
+								if imgID, ok := firstImg["id"].(string); ok {
+									imgFileResp, err := client.Get(fmt.Sprintf("%s/api/images/%s/file", scraperURL, imgID))
+									if err != nil {
+										t.Logf("⚠ Image file request failed: %v", err)
+									} else {
+										defer imgFileResp.Body.Close()
+										if imgFileResp.StatusCode == http.StatusOK {
+											t.Log("✓ Scraper image file endpoint accessible")
+										} else {
+											t.Logf("Image file endpoint returned status %d", imgFileResp.StatusCode)
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	t.Log("✓ SEO workflow test completed successfully")
 }
 
 // Helper function to assert a field exists in a map

@@ -11,29 +11,85 @@ A microservices-based web content processing platform built in Go. The system sc
 
 PurpleTab consists of five services that work together:
 
-- **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models
+- **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models. Stores files in filesystem with SEO-friendly slugs
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
-- **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, and tag-based search
+- **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, tag-based search, and SEO-optimized content serving
 - **Scheduler** - Manages scheduled tasks for automated scraping and database maintenance using cron expressions
 - **Web** - React-based web interface for content ingestion with real-time progress tracking, search, and viewing
 
+### Two-Audience Architecture
+
+PurpleTab serves **two distinct audiences** with different interfaces:
+
+**1. Internal Users (Administrators)**
+- Use the React Web App (Port 3000)
+- Ingest content, manage scrapes, search and filter
+- Client-side SPA - no SEO needed
+- Private admin interface
+
+**2. Public Users & Search Engines**
+- Access Controller's SEO endpoints (Port 9080)
+- Server-rendered HTML at `/content/{slug}`
+- XML sitemaps at `/sitemap.xml` and `/images-sitemap.xml`
+- Discoverable by Google and other search engines
+- Public knowledge base
+
 ```
-┌──────────┐
-│   Web    │
-│ Port 3000│
-└────┬─────┘
-     │
-     v
-┌────────────┐       ┌──────────┐
-│ Controller │──────>│ Scraper  │
-│  Port 8080 │       │Port 8081 │
-└────┬───────┘       └──────────┘
-     │
-     v              ┌──────────────┐
-     └─────────────>│TextAnalyzer  │
-                    │  Port 8082   │
-                    └──────────────┘
+Internal Users:
+┌──────────────┐
+│   Web App    │ (React SPA - Admin Interface)
+│  Port 3000   │
+└──────┬───────┘
+       │ API calls
+       v
+┌──────────────┐       ┌──────────┐
+│  Controller  │──────>│ Scraper  │
+│  Port 9080   │       │Port 9081 │
+└──────┬───────┘       └──────────┘
+       │
+       v              ┌──────────────┐
+       └─────────────>│TextAnalyzer  │
+                      │  Port 9082   │
+                      └──────────────┘
+
+Public Users & Search Engines:
+┌──────────────┐
+│Search Engines│ (Google, Bing, etc.)
+└──────┬───────┘
+       │ GET /content/{slug}
+       │ GET /sitemap.xml
+       v
+┌──────────────┐
+│  Controller  │ (SEO-optimized HTML)
+│  Port 9080   │
+└──────────────┘
 ```
+
+**Why This Architecture?**
+- Clean separation of concerns (API vs. content serving)
+- Fast SEO pages with direct database access
+- Simple deployment (no SSR complexity)
+- Follows microservices principles
+- Both audiences get optimized experiences
+
+## Features
+
+### Core Capabilities
+- **AI-Powered Scraping**: Extracts and cleans web content using Ollama AI models
+- **Comprehensive Text Analysis**: Sentiment analysis, readability scoring, named entity recognition
+- **Smart Link Scoring**: AI-based quality assessment for scraped URLs
+- **Tag-Based Search**: Fuzzy search across extracted content and metadata
+- **Asynchronous Processing**: Background scraping with real-time progress tracking
+
+### SEO and Public Content
+- **SEO-Friendly URLs**: Automatic slug generation from content titles for clean, readable URLs
+- **Structured Data**: JSON-LD schema.org markup for rich search engine results
+- **Meta Tags**: Complete Open Graph and Twitter Card metadata for social sharing
+- **XML Sitemaps**: Automatically generated sitemaps for search engine indexing
+- **Robots.txt**: Configurable crawler directives
+- **Filesystem Storage**: Efficient file-based storage for images and content with organized directory structure
+
+The Controller service provides public-facing endpoints for serving SEO-optimized HTML pages of scraped content, making the platform suitable for building searchable knowledge bases and content repositories.
 
 ## Prerequisites
 
@@ -75,9 +131,10 @@ make docker-down
 
 The services will be available at:
 - Web Interface: http://localhost:3000
-- Controller: http://localhost:8080
-- Scraper: http://localhost:8081
-- TextAnalyzer: http://localhost:8082
+- Controller: http://localhost:9080
+- Scraper: http://localhost:9081
+- TextAnalyzer: http://localhost:9082
+- Scheduler: http://localhost:9083
 
 ### Local Development
 
@@ -125,6 +182,7 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 **Scraper:**
 - `PORT` - HTTP server port
 - `DB_PATH` - SQLite database path
+- `STORAGE_BASE_PATH` - Base path for filesystem storage (default: ./storage)
 - `OLLAMA_URL` - Ollama API URL
 - `OLLAMA_MODEL` - Ollama model name
 
@@ -136,7 +194,7 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 - `OLLAMA_MODEL` - Ollama model name
 
 **Web:**
-- `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:8080)
+- `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:9080)
 
 ## Service Documentation
 
@@ -164,6 +222,7 @@ make build              # Build all services
 make controller-build   # Build controller only
 make scraper-build      # Build scraper only
 make textanalyzer-build # Build textanalyzer only
+make scheduler-build    # Build scheduler only
 make web-build          # Build web interface
 
 # Test commands
@@ -172,6 +231,7 @@ make test-coverage      # Generate coverage reports
 make controller-test    # Test controller only
 make scraper-test       # Test scraper only
 make textanalyzer-test  # Test textanalyzer only
+make scheduler-test     # Test scheduler only
 make web-test           # Test web interface
 make web-test-coverage  # Test web with coverage
 make web-lint           # Lint web interface
@@ -267,17 +327,28 @@ make test-all
 
 GitHub Actions workflows automatically run tests on every commit:
 
-- **CI Workflow** - Detects changed services and runs only affected tests
+- **CI Workflow** - Detects changed services and runs only affected unit tests
+- **Integration Tests Workflow** - Runs full end-to-end tests with all services
 - **Per-Service Workflows** - Individual workflows for each service with coverage reporting
 - Workflows trigger on push/PR to main/master/develop branches
 - Matrix testing: Go 1.21, Node.js 18-20
 
 Workflows are located in `.github/workflows/`:
-- `ci.yml` - Smart monorepo CI that tests only changed apps
+- `ci.yml` - Smart monorepo CI that runs unit tests for changed apps
+- `integration-tests.yml` - End-to-end integration tests with Docker Compose
 - `test-controller.yml` - Controller tests (Go)
 - `test-scraper.yml` - Scraper tests (Go)
 - `test-textanalyzer.yml` - TextAnalyzer tests (Go)
 - `test-web.yml` - Web interface tests (Node.js/React)
+
+**Test Strategy:**
+- **Unit tests** run for each changed service independently (fast feedback)
+- **Integration tests** run in a separate workflow that:
+  - Builds all services with Docker
+  - Starts services with Docker Compose
+  - Runs comprehensive end-to-end tests
+  - Includes health checks and proper service orchestration
+  - Only runs benchmarks on main branch
 
 #### Integration Tests
 

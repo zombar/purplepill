@@ -1,11 +1,12 @@
 .PHONY: help build test clean install fmt lint docker-build docker-up docker-down docker-logs \
-        controller-% scraper-% textanalyzer-% web-%
+        controller-% scraper-% textanalyzer-% web-% scheduler-%
 
 # Submodule directories
 CONTROLLER_DIR=apps/controller
 SCRAPER_DIR=apps/scraper
 TEXTANALYZER_DIR=apps/textanalyzer
 WEB_DIR=apps/web
+SCHEDULER_DIR=apps/scheduler
 
 # Default target
 help: ## Display this help message
@@ -44,12 +45,20 @@ help: ## Display this help message
 	@echo "  textanalyzer-build - Build textanalyzer service"
 	@echo "  textanalyzer-test  - Test textanalyzer service"
 	@echo "  textanalyzer-run   - Run textanalyzer service"
+	@echo "  scheduler-build    - Build scheduler service"
+	@echo "  scheduler-test     - Test scheduler service"
+	@echo "  scheduler-run      - Run scheduler service"
 	@echo "  web-build          - Build web interface"
 	@echo "  web-test           - Test web interface"
 	@echo "  web-test-coverage  - Test web interface with coverage"
 	@echo "  web-lint           - Lint web interface"
 	@echo "  web-dev            - Run web dev server"
 	@echo "  web-install        - Install web dependencies"
+	@echo ""
+	@echo "For more service-specific commands (SEO tests, benchmarks, etc.):"
+	@echo "  cd apps/controller && make help"
+	@echo "  cd apps/scraper && make help"
+	@echo "  cd apps/textanalyzer && make help"
 	@echo ""
 	@echo "Utility commands:"
 	@echo "  submodule-update   - Update all submodules to latest"
@@ -62,6 +71,7 @@ build: ## Build all services
 	@$(MAKE) -C $(CONTROLLER_DIR) build
 	@$(MAKE) -C $(SCRAPER_DIR) build-api
 	@$(MAKE) -C $(TEXTANALYZER_DIR) build
+	@$(MAKE) -C $(SCHEDULER_DIR) build
 	@cd $(WEB_DIR) && npm run build
 	@echo "All services built successfully!"
 
@@ -70,6 +80,7 @@ test: ## Run tests for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) test
 	@$(MAKE) -C $(SCRAPER_DIR) test
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test
+	@$(MAKE) -C $(SCHEDULER_DIR) test
 	@cd $(WEB_DIR) && npm test -- --run
 	@echo "All tests completed!"
 
@@ -78,6 +89,7 @@ test-coverage: ## Run tests with coverage for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) test-coverage
 	@$(MAKE) -C $(SCRAPER_DIR) test-coverage
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test-coverage
+	@$(MAKE) -C $(SCHEDULER_DIR) test
 	@cd $(WEB_DIR) && npm run test:coverage -- --run
 	@echo "All coverage reports generated!"
 
@@ -86,6 +98,7 @@ clean: ## Clean build artifacts for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) clean
 	@$(MAKE) -C $(SCRAPER_DIR) clean
 	@$(MAKE) -C $(TEXTANALYZER_DIR) clean
+	@$(MAKE) -C $(SCHEDULER_DIR) clean
 	@cd $(WEB_DIR) && rm -rf dist
 	@echo "All services cleaned!"
 
@@ -94,6 +107,7 @@ install: ## Install dependencies for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) install
 	@$(MAKE) -C $(SCRAPER_DIR) deps
 	@$(MAKE) -C $(TEXTANALYZER_DIR) install
+	@$(MAKE) -C $(SCHEDULER_DIR) deps
 	@cd $(WEB_DIR) && npm install
 	@echo "All dependencies installed!"
 
@@ -102,6 +116,7 @@ fmt: ## Format code for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) fmt
 	@$(MAKE) -C $(SCRAPER_DIR) fmt
 	@$(MAKE) -C $(TEXTANALYZER_DIR) fmt
+	@$(MAKE) -C $(SCHEDULER_DIR) fmt
 	@echo "All code formatted!"
 
 lint: ## Lint code for all services
@@ -109,6 +124,7 @@ lint: ## Lint code for all services
 	@$(MAKE) -C $(CONTROLLER_DIR) lint
 	@$(MAKE) -C $(SCRAPER_DIR) vet
 	@$(MAKE) -C $(TEXTANALYZER_DIR) lint
+	@$(MAKE) -C $(SCHEDULER_DIR) fmt
 	@cd $(WEB_DIR) && npm run lint
 	@echo "All linting completed!"
 
@@ -127,6 +143,7 @@ docker-up: ## Start all services with docker-compose
 	@echo "Controller:     http://localhost:8080"
 	@echo "Scraper API:    http://localhost:8081"
 	@echo "Text Analyzer:  http://localhost:8082"
+	@echo "Scheduler:      http://localhost:8083"
 
 docker-down: ## Stop all services
 	@echo "Stopping all services..."
@@ -194,6 +211,19 @@ textanalyzer-clean:
 
 textanalyzer-run:
 	@$(MAKE) -C $(TEXTANALYZER_DIR) run
+
+# Scheduler commands
+scheduler-build:
+	@$(MAKE) -C $(SCHEDULER_DIR) build
+
+scheduler-test:
+	@$(MAKE) -C $(SCHEDULER_DIR) test
+
+scheduler-clean:
+	@$(MAKE) -C $(SCHEDULER_DIR) clean
+
+scheduler-run:
+	@$(MAKE) -C $(SCHEDULER_DIR) run
 
 # Web commands
 web-build:
@@ -268,4 +298,5 @@ dev: build ## Build and run all services locally (non-Docker)
 	@echo "  Terminal 1: make textanalyzer-run"
 	@echo "  Terminal 2: make scraper-run-api"
 	@echo "  Terminal 3: make controller-run"
-	@echo "  Terminal 4: make web-dev (optional - for UI)"
+	@echo "  Terminal 4: make scheduler-run"
+	@echo "  Terminal 5: make web-dev (optional - for UI)"

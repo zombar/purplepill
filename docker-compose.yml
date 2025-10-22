@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-textanalyzer
     ports:
-      - "8082:8080"
+      - "9082:8080"
     environment:
       - PORT=8080
       - DB_PATH=/data/textanalyzer.db
@@ -34,15 +34,17 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-scraper
     ports:
-      - "8081:8080"
+      - "9081:8080"
     environment:
       - PORT=8080
       - DB_PATH=/app/data/scraper.db
+      - STORAGE_BASE_PATH=/app/storage
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
       # - OLLAMA_VISION_MODEL=gemma3.12b
     volumes:
       - scraper-data:/app/data
+      - scraper-storage:/app/storage
     command: [
       "./scraper-api",
     ]
@@ -64,16 +66,19 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-controller
     ports:
-      - "8080:8080"
+      - "9080:8080"
     environment:
       # Service URLs - internal network references
       - SCRAPER_BASE_URL=http://scraper:8080
       - TEXTANALYZER_BASE_URL=http://textanalyzer:8080
+      - SCHEDULER_BASE_URL=http://scheduler:8080
       # Controller configuration
       - CONTROLLER_PORT=8080
       - DATABASE_PATH=/app/data/controller.db
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
+      # Web interface URL for footer links on static pages
+      - WEB_INTERFACE_URL=http://localhost:3000
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
@@ -97,12 +102,13 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        # Pass build-time arguments for Vite environment variables
+        - VITE_PUBLIC_URL_BASE=http://localhost:9080
+        - CONTROLLER_API_URL=http://controller:8080
     container_name: purpletab-web
     ports:
       - "3000:80"
-    environment:
-      # API URL for frontend (set at build time in Vite)
-      - CONTROLLER_API_URL=http://controller:8080
     restart: unless-stopped
     depends_on:
       controller:
@@ -116,12 +122,48 @@ services:
     networks:
       - purpletab-network
 
+  # Scheduler Service
+  scheduler:
+    image: localhost/purpletab-scheduler:latest
+    build:
+      context: ./apps/scheduler
+      dockerfile: Dockerfile
+    container_name: purpletab-scheduler
+    ports:
+      - "9083:8080"
+    environment:
+      - PORT=8080
+      - DB_PATH=/app/data/scheduler.db
+      - CONTROLLER_DB_PATH=/app/controller-data/controller.db
+      - SCRAPER_URL=http://scraper:8080
+    volumes:
+      - scheduler-data:/app/data
+      - controller-data:/app/controller-data:ro
+    restart: unless-stopped
+    depends_on:
+      controller:
+        condition: service_healthy
+      scraper:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - purpletab-network
+
 volumes:
   controller-data:
     driver: local
   scraper-data:
     driver: local
+  scraper-storage:
+    driver: local
   textanalyzer-data:
+    driver: local
+  scheduler-data:
     driver: local
 
 networks:
