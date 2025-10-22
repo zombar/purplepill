@@ -102,13 +102,13 @@ services:
     build:
       context: ./apps/web
       dockerfile: Dockerfile
+      args:
+        # Pass build-time arguments for Vite environment variables
+        - VITE_PUBLIC_URL_BASE=http://localhost:8080
+        - CONTROLLER_API_URL=http://controller:8080
     container_name: purpletab-web
     ports:
       - "3000:80"
-    environment:
-      # API URL for frontend (set at build time in Vite)
-      - CONTROLLER_API_URL=http://controller:8080
-      - VITE_PUBLIC_URL_BASE=http://localhost:3000
     restart: unless-stopped
     depends_on:
       controller:
