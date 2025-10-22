@@ -28,7 +28,7 @@ PurpleTab serves **two distinct audiences** with different interfaces:
 - Private admin interface
 
 **2. Public Users & Search Engines**
-- Access Controller's SEO endpoints (Port 8080)
+- Access Controller's SEO endpoints (Port 9080)
 - Server-rendered HTML at `/content/{slug}`
 - XML sitemaps at `/sitemap.xml` and `/images-sitemap.xml`
 - Discoverable by Google and other search engines
@@ -44,12 +44,12 @@ Internal Users:
        v
 ┌──────────────┐       ┌──────────┐
 │  Controller  │──────>│ Scraper  │
-│  Port 8080   │       │Port 8081 │
+│  Port 9080   │       │Port 9081 │
 └──────┬───────┘       └──────────┘
        │
        v              ┌──────────────┐
        └─────────────>│TextAnalyzer  │
-                      │  Port 8082   │
+                      │  Port 9082   │
                       └──────────────┘
 
 Public Users & Search Engines:
@@ -61,7 +61,7 @@ Public Users & Search Engines:
        v
 ┌──────────────┐
 │  Controller  │ (SEO-optimized HTML)
-│  Port 8080   │
+│  Port 9080   │
 └──────────────┘
 ```
 
@@ -131,10 +131,10 @@ make docker-down
 
 The services will be available at:
 - Web Interface: http://localhost:3000
-- Controller: http://localhost:8080
-- Scraper: http://localhost:8081
-- TextAnalyzer: http://localhost:8082
-- Scheduler: http://localhost:8083
+- Controller: http://localhost:9080
+- Scraper: http://localhost:9081
+- TextAnalyzer: http://localhost:9082
+- Scheduler: http://localhost:9083
 
 ### Local Development
 
@@ -194,7 +194,7 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 - `OLLAMA_MODEL` - Ollama model name
 
 **Web:**
-- `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:8080)
+- `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:9080)
 
 ## Service Documentation
 

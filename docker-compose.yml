@@ -7,7 +7,7 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-textanalyzer
     ports:
-      - "18082:8080"
+      - "9082:8080"
     environment:
       - PORT=8080
       - DB_PATH=/data/textanalyzer.db
@@ -34,7 +34,7 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-scraper
     ports:
-      - "18081:8080"
+      - "9081:8080"
     environment:
       - PORT=8080
       - DB_PATH=/app/data/scraper.db
@@ -66,7 +66,7 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-controller
     ports:
-      - "18080:8080"
+      - "9080:8080"
     environment:
       # Service URLs - internal network references
       - SCRAPER_BASE_URL=http://scraper:8080
@@ -104,7 +104,7 @@ services:
       dockerfile: Dockerfile
       args:
         # Pass build-time arguments for Vite environment variables
-        - VITE_PUBLIC_URL_BASE=http://localhost:18080
+        - VITE_PUBLIC_URL_BASE=http://localhost:9080
         - CONTROLLER_API_URL=http://controller:8080
     container_name: purpletab-web
     ports:
@@ -130,7 +130,7 @@ services:
       dockerfile: Dockerfile
     container_name: purpletab-scheduler
     ports:
-      - "18083:8080"
+      - "9083:8080"
     environment:
       - PORT=8080
       - DB_PATH=/app/data/scheduler.db
