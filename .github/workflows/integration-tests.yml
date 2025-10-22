@@ -43,7 +43,7 @@ jobs:
       - name: Build Docker images
         run: |
           echo "Building all Docker images..."
-          docker-compose build
+          docker compose build
         env:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
@@ -51,7 +51,7 @@ jobs:
       - name: Start services
         run: |
           echo "Starting all services with Docker Compose..."
-          docker-compose up -d
+          docker compose up -d
           echo "Waiting for services to be ready..."
           sleep 10
 
@@ -67,7 +67,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "✗ Controller health check failed"
-              docker-compose logs controller
+              docker compose logs controller
               exit 1
             fi
             echo "Waiting for controller... ($i/30)"
@@ -82,7 +82,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "✗ Scraper health check failed"
-              docker-compose logs scraper
+              docker compose logs scraper
               exit 1
             fi
             echo "Waiting for scraper... ($i/30)"
@@ -97,7 +97,7 @@ jobs:
             fi
             if [ $i -eq 30 ]; then
               echo "✗ TextAnalyzer health check failed"
-              docker-compose logs textanalyzer
+              docker compose logs textanalyzer
               exit 1
             fi
             echo "Waiting for textanalyzer... ($i/30)"
@@ -119,19 +119,19 @@ jobs:
         if: failure()
         run: |
           echo "=== Controller Logs ==="
-          docker-compose logs controller
+          docker compose logs controller
           echo ""
           echo "=== Scraper Logs ==="
-          docker-compose logs scraper
+          docker compose logs scraper
           echo ""
           echo "=== TextAnalyzer Logs ==="
-          docker-compose logs textanalyzer
+          docker compose logs textanalyzer
 
       - name: Stop services
         if: always()
         run: |
           echo "Stopping all services..."
-          docker-compose down -v
+          docker compose down -v
           echo "Services stopped"
 
   # Run benchmarks separately (only on main branch)
@@ -158,8 +158,8 @@ jobs:
 
       - name: Build and start services
         run: |
-          docker-compose build
-          docker-compose up -d
+          docker compose build
+          docker compose up -d
           sleep 15
 
       - name: Run benchmark tests
@@ -174,4 +174,4 @@ jobs:
 
       - name: Stop services
         if: always()
-        run: docker-compose down -v
+        run: docker compose down -v
