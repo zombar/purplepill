@@ -146,20 +146,22 @@ jobs:
       - name: Run tests
         run: npm test
 
-  # Summary job that requires all tests to pass
+  # Summary job that requires all unit tests to pass
+  # Note: Integration tests run in a separate workflow (integration-tests.yml)
   ci-success:
     runs-on: ubuntu-latest
     needs: [test-controller, test-scraper, test-textanalyzer, test-web]
     if: always()
     steps:
-      - name: Check all tests passed
+      - name: Check all unit tests passed
         run: |
           if [ "${{ contains(needs.*.result, 'failure') }}" == "true" ]; then
-            echo "One or more test jobs failed"
+            echo "One or more unit test jobs failed"
             exit 1
           fi
           if [ "${{ contains(needs.*.result, 'cancelled') }}" == "true" ]; then
-            echo "One or more test jobs were cancelled"
+            echo "One or more unit test jobs were cancelled"
             exit 1
           fi
-          echo "All tests passed!"
+          echo "All unit tests passed!"
+          echo "Note: Integration tests run separately in the 'Integration Tests' workflow"
