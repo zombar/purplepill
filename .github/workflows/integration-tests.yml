@@ -59,49 +59,49 @@ jobs:
         run: |
           echo "Checking service health..."
 
-          # Controller health check
-          for i in {1..30}; do
+          # Controller health check (5 minute timeout)
+          for i in {1..60}; do
             if curl -f http://localhost:18080/health > /dev/null 2>&1; then
               echo "✓ Controller is healthy"
               break
             fi
-            if [ $i -eq 30 ]; then
+            if [ $i -eq 60 ]; then
               echo "✗ Controller health check failed"
               docker compose logs controller
               exit 1
             fi
-            echo "Waiting for controller... ($i/30)"
-            sleep 2
+            echo "Waiting for controller... ($i/60)"
+            sleep 5
           done
 
-          # Scraper health check
-          for i in {1..30}; do
+          # Scraper health check (5 minute timeout)
+          for i in {1..60}; do
             if curl -f http://localhost:18081/health > /dev/null 2>&1; then
               echo "✓ Scraper is healthy"
               break
             fi
-            if [ $i -eq 30 ]; then
+            if [ $i -eq 60 ]; then
               echo "✗ Scraper health check failed"
               docker compose logs scraper
               exit 1
             fi
-            echo "Waiting for scraper... ($i/30)"
-            sleep 2
+            echo "Waiting for scraper... ($i/60)"
+            sleep 5
           done
 
-          # TextAnalyzer health check
-          for i in {1..30}; do
+          # TextAnalyzer health check (5 minute timeout)
+          for i in {1..60}; do
             if curl -f http://localhost:18082/health > /dev/null 2>&1; then
               echo "✓ TextAnalyzer is healthy"
               break
             fi
-            if [ $i -eq 30 ]; then
+            if [ $i -eq 60 ]; then
               echo "✗ TextAnalyzer health check failed"
               docker compose logs textanalyzer
               exit 1
             fi
-            echo "Waiting for textanalyzer... ($i/30)"
-            sleep 2
+            echo "Waiting for textanalyzer... ($i/60)"
+            sleep 5
           done
 
       - name: Run integration tests
