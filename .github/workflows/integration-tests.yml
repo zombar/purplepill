@@ -61,7 +61,7 @@ jobs:
 
           # Controller health check
           for i in {1..30}; do
-            if curl -f http://localhost:18080/health > /dev/null 2>&1; then
+            if curl -f http://localhost:9080/health > /dev/null 2>&1; then
               echo "✓ Controller is healthy"
               break
             fi
@@ -76,7 +76,7 @@ jobs:
 
           # Scraper health check
           for i in {1..30}; do
-            if curl -f http://localhost:18081/health > /dev/null 2>&1; then
+            if curl -f http://localhost:9081/health > /dev/null 2>&1; then
               echo "✓ Scraper is healthy"
               break
             fi
@@ -91,7 +91,7 @@ jobs:
 
           # TextAnalyzer health check
           for i in {1..30}; do
-            if curl -f http://localhost:18082/health > /dev/null 2>&1; then
+            if curl -f http://localhost:9082/health > /dev/null 2>&1; then
               echo "✓ TextAnalyzer is healthy"
               break
             fi
@@ -111,9 +111,9 @@ jobs:
           go test -v -timeout 10m
         env:
           # Integration tests will use these default URLs
-          CONTROLLER_URL: http://localhost:18080
-          SCRAPER_URL: http://localhost:18081
-          TEXTANALYZER_URL: http://localhost:18082
+          CONTROLLER_URL: http://localhost:9080
+          SCRAPER_URL: http://localhost:9081
+          TEXTANALYZER_URL: http://localhost:9082
 
       - name: Display service logs on failure
         if: failure()
@@ -168,9 +168,9 @@ jobs:
           cd tests/integration
           BENCHMARK=true go test -v -timeout 15m -run TestBenchmark
         env:
-          CONTROLLER_URL: http://localhost:18080
-          SCRAPER_URL: http://localhost:18081
-          TEXTANALYZER_URL: http://localhost:18082
+          CONTROLLER_URL: http://localhost:9080
+          SCRAPER_URL: http://localhost:9081
+          TEXTANALYZER_URL: http://localhost:9082
 
       - name: Stop services
         if: always()
