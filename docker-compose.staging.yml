@@ -97,7 +97,7 @@ services:
         # Build-time environment variables for React
         # Note: Vite requires VITE_ prefix for env vars to be exposed to client
         - VITE_PUBLIC_URL_BASE=http://honker/purpletab
-        - VITE_CONTROLLER_API_URL=/api
+        - VITE_CONTROLLER_API_URL=/purpletab
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80
