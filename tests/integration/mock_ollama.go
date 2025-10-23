@@ -53,10 +53,10 @@ func (m *MockOllamaServer) preCacheCommonResponses() {
 		"synopsis",
 		"clean text",
 		"editorial analysis",
-		"generate tags",
 		"extract references",
 		"AI detection",
 		"quality score",
+		// Note: tags are NOT pre-cached as they need to be content-specific
 	}
 
 	for _, prompt := range commonPrompts {
@@ -171,7 +171,6 @@ var (
 	synopsisResponse = "This is a mock synopsis. The text discusses various topics and presents information in a structured manner. This mock response helps test the integration without requiring a real AI model."
 	cleanResponse    = "This is cleaned text content without artifacts or formatting issues."
 	editorialResponse = "This text appears to be informational in nature. The writing maintains a neutral tone with balanced presentation. No significant editorial bias is detected in this mock analysis."
-	tagsResponse     = `["climate","environment","technology","programming"]`
 	referencesResponse = `[{"text":"Sample statistic or claim","type":"statistic","context":"Surrounding context for the claim","confidence":"medium"}]`
 	aiDetectionResponse = `{"likelihood":"unlikely","confidence":"medium","reasoning":"The text shows natural human writing patterns with varied sentence structure and authentic voice.","indicators":["natural flow","varied vocabulary","personal tone"],"human_score":75}`
 	qualityScoreResponse = `{"score":0.30,"reason":"The text is well-written, informative, and provides valuable content.","categories":["informative","well_written"],"quality_indicators":["clear_structure","good_grammar","valuable_insights"],"problems_detected":[]}`
@@ -196,9 +195,42 @@ func (m *MockOllamaServer) generateMockResponse(prompt string) string {
 		return editorialResponse
 	}
 
-	// Tag generation
+	// Tag generation - analyze the prompt content to generate appropriate tags
 	if strings.Contains(promptLower, "tags") && strings.Contains(promptLower, "json array") {
-		return tagsResponse
+		tags := []string{}
+
+		// Sentiment-based tags
+		if strings.Contains(promptLower, "positive") || strings.Contains(promptLower, "happy") {
+			tags = append(tags, "positive")
+		}
+		if strings.Contains(promptLower, "negative") || strings.Contains(promptLower, "sad") {
+			tags = append(tags, "negative")
+		}
+
+		// Topic-based tags
+		if strings.Contains(promptLower, "climate") || strings.Contains(promptLower, "environment") {
+			tags = append(tags, "climate", "environment")
+		}
+		if strings.Contains(promptLower, "technology") || strings.Contains(promptLower, "programming") {
+			tags = append(tags, "technology", "programming")
+		}
+		if strings.Contains(promptLower, "science") {
+			tags = append(tags, "science")
+		}
+
+		// Default tags if none matched
+		if len(tags) == 0 {
+			tags = []string{"information", "analysis", "content"}
+		}
+
+		// Limit to 5 tags
+		if len(tags) > 5 {
+			tags = tags[:5]
+		}
+
+		// Marshal to JSON
+		tagsJSON, _ := json.Marshal(tags)
+		return string(tagsJSON)
 	}
 
 	// Reference extraction
