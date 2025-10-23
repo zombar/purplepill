@@ -52,9 +52,20 @@ curl http://localhost:3001/
 
 ```caddy
 honker {
-    reverse_proxy /purpletab/api/* localhost:9080
-    reverse_proxy /purpletab/content/* localhost:9080
-    reverse_proxy /purpletab/* localhost:3001
+    # Forward API requests, stripping /purpletab prefix before sending to controller
+    handle_path /purpletab/api/* {
+        rewrite * /api{uri}
+        reverse_proxy localhost:9080
+    }
+    # Forward content requests, stripping /purpletab prefix
+    handle_path /purpletab/content/* {
+        rewrite * /content{uri}
+        reverse_proxy localhost:9080
+    }
+    # Forward web UI requests, keeping /purpletab prefix
+    handle /purpletab/* {
+        reverse_proxy localhost:3001
+    }
 }
 ```
 
@@ -146,6 +157,7 @@ server {
     }
 
     # Web UI - catch all purpletab requests
+    # Forward with /purpletab prefix intact
     location /purpletab/ {
         proxy_pass http://purpletab_web;
 
