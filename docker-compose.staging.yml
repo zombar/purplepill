@@ -95,8 +95,9 @@ services:
       dockerfile: Dockerfile
       args:
         # Build-time environment variables for React
+        # Note: Vite requires VITE_ prefix for env vars to be exposed to client
         - VITE_PUBLIC_URL_BASE=http://honker/purpletab
-        - CONTROLLER_API_URL=http://honker/purpletab/api
+        - VITE_CONTROLLER_API_URL=/api
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80
