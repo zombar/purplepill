@@ -12,7 +12,14 @@ version: '3.8'
 #   honker/purpletab/content/*  -> localhost:9080 (SEO content)
 
 services:
+  textanalyzer:
+    image: ghcr.io/zombar/purpletab-textanalyzer:staging
+
+  scraper:
+    image: ghcr.io/zombar/purpletab-scraper:staging
+
   controller:
+    image: ghcr.io/zombar/purpletab-controller:staging
     environment:
       # Service URLs (internal Docker network)
       - SCRAPER_BASE_URL=http://scraper:8080
@@ -37,6 +44,9 @@ services:
     ports:
       - "9080:8080"  # Expose for external reverse proxy
     restart: unless-stopped
+
+  scheduler:
+    image: ghcr.io/zombar/purpletab-scheduler:staging
 
   scraper:
     environment:
@@ -90,14 +100,7 @@ services:
     restart: unless-stopped
 
   web:
-    build:
-      context: ./apps/web
-      dockerfile: Dockerfile
-      args:
-        # Build-time environment variables for React
-        # Note: Vite requires VITE_ prefix for env vars to be exposed to client
-        - VITE_PUBLIC_URL_BASE=http://honker/purpletab
-        - VITE_CONTROLLER_API_URL=/purpletab
+    image: ghcr.io/zombar/purpletab-web:staging
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80

@@ -38,12 +38,16 @@ help: ## Display this help message
 	@echo "  docker-rebuild         - Rebuild and restart all services"
 	@echo "  docker-health          - Check health of all services"
 	@echo ""
-	@echo "Docker staging commands:"
-	@echo "  docker-staging-build   - Build all Docker images for staging"
-	@echo "  docker-staging-up      - Start all services in staging mode"
+	@echo "Docker staging commands (dev machine):"
+	@echo "  docker-staging-build   - Build all service images for staging"
+	@echo "  docker-staging-push    - Build and push all images to ghcr.io/zombar"
+	@echo "  docker-staging-deploy  - Full local deploy: build and start services"
+	@echo ""
+	@echo "Docker staging commands (server):"
+	@echo "  docker-staging-pull    - Pull latest images and start services"
+	@echo "  docker-staging-up      - Start services (without pulling)"
 	@echo "  docker-staging-down    - Stop all staging services"
 	@echo "  docker-staging-logs    - View logs from staging services"
-	@echo "  docker-staging-restart - Restart staging services"
 	@echo ""
 	@echo "Docker service commands (per service):"
 	@echo "  docker-logs-<service>  - View logs for specific service (e.g., docker-logs-controller)"
@@ -214,48 +218,33 @@ docker-health: ## Check health of all services
 
 # ==================== Docker Staging Commands ====================
 
-docker-staging-build: ## Build all Docker images for staging
-	@echo "Building Docker images for staging..."
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml build
-	@echo "Staging images built!"
+docker-staging-build: ## Build all service images for staging
+	@./build-staging.sh
+
+docker-staging-push: ## Build and push all images to ghcr.io/zombar
+	@./build-staging.sh push
+
+docker-staging-deploy: ## Full local deploy: build and start all services (dev machine)
+	@echo "🚀 Deploying to staging..."
+	@./build-staging.sh
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+	@echo ""
+	@echo "✅ Staging deployment complete!"
+	@echo "   Web Interface: http://honker/purpletab (via reverse proxy)"
+	@echo "   Local Web:     http://localhost:3001"
+	@echo "   Local API:     http://localhost:9080"
 
 docker-staging-up: ## Start all services in staging mode
-	@echo "Starting services in staging mode..."
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
-	@echo "Staging services started!"
-	@echo "Web Interface:  http://honker/purpletab (via reverse proxy)"
-	@echo "Local Web:      http://localhost:3001"
-	@echo "Local API:      http://localhost:9080"
 
 docker-staging-down: ## Stop all staging services
-	@echo "Stopping staging services..."
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
-	@echo "Staging services stopped!"
 
 docker-staging-logs: ## View logs from staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
 
-docker-staging-ps: ## Show running staging containers
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml ps
-
-docker-staging-restart: ## Restart staging services
-	@$(MAKE) docker-staging-down
-	@$(MAKE) docker-staging-up
-
-docker-staging-rebuild: ## Rebuild and restart staging services
-	@echo "Rebuilding staging services..."
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml build --no-cache
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
-	@echo "Staging services rebuilt and restarted!"
-
-docker-staging-health: ## Check health of staging services
-	@echo "Checking health of staging services..."
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml ps
-	@echo ""
-	@echo "Testing endpoints..."
-	@echo -n "Controller (9080): " && curl -sf http://localhost:9080/health > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
-	@echo -n "Web UI (3001): " && curl -sf http://localhost:3001 > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+docker-staging-pull: ## Pull latest images and start services (for server)
+	@./deploy-staging.sh
 
 # ==================== Docker Per-Service Commands ====================
 

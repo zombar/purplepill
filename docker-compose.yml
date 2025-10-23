@@ -1,7 +1,7 @@
 services:
   # Text Analyzer Service
   textanalyzer:
-    image: localhost/purpletab-textanalyzer:latest
+    image: purpletab-textanalyzer:latest
     build:
       context: ./apps/textanalyzer
       dockerfile: Dockerfile
@@ -28,7 +28,7 @@ services:
 
   # Scraper Service
   scraper:
-    image: localhost/purpletab-scraper:latest
+    image: purpletab-scraper:latest
     build:
       context: ./apps/scraper
       dockerfile: Dockerfile
@@ -60,7 +60,7 @@ services:
 
   # Controller Service
   controller:
-    image: localhost/purpletab-controller:latest
+    image: purpletab-controller:latest
     build:
       context: ./apps/controller
       dockerfile: Dockerfile
@@ -99,7 +99,7 @@ services:
 
   # Web UI Service
   web:
-    image: localhost/purpletab-web:latest
+    image: purpletab-web:latest
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -126,7 +126,7 @@ services:
 
   # Scheduler Service
   scheduler:
-    image: localhost/purpletab-scheduler:latest
+    image: purpletab-scheduler:latest
     build:
       context: ./apps/scheduler
       dockerfile: Dockerfile
