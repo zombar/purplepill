@@ -3,9 +3,8 @@ set -e
 
 # Build and optionally push staging Docker images for PurpleTab
 # Usage:
-#   ./build-staging.sh              - Build all services
-#   ./build-staging.sh push         - Build and push all to registry
-#   REGISTRY=myregistry ./build-staging.sh push
+#   ./build-staging.sh              - Build all services for local platform
+#   ./build-staging.sh push         - Build multi-platform and push to registry
 
 REGISTRY=${REGISTRY:-ghcr.io/zombar}
 PUSH=${1:-}
@@ -16,34 +15,94 @@ SERVICES=("textanalyzer" "scraper" "controller" "scheduler" "web")
 echo "🔨 Building staging Docker images..."
 echo ""
 
-# Build all images
-echo "📦 Building all service images..."
-docker-compose -f docker-compose.build-staging.yml build
+# Function to get context path for a service
+get_context() {
+    case $1 in
+        textanalyzer) echo "./apps/textanalyzer" ;;
+        scraper) echo "./apps/scraper" ;;
+        controller) echo "./apps/controller" ;;
+        scheduler) echo "./apps/scheduler" ;;
+        web) echo "./apps/web" ;;
+    esac
+}
 
-echo ""
-echo "✅ Build complete!"
-
-# Push to registry if requested
+# Ensure buildx builder exists for multi-platform builds
 if [ "$PUSH" = "push" ]; then
-    if [ -n "$REGISTRY" ]; then
+    echo "🔧 Setting up multi-platform builder..."
+    docker buildx create --name purpletab-builder --use 2>/dev/null || docker buildx use purpletab-builder 2>/dev/null || docker buildx use default
+    echo ""
+fi
+
+# Build all images
+if [ "$PUSH" = "push" ]; then
+    echo "📦 Building and pushing multi-platform images (amd64, arm64)..."
+    echo "   Registry: $REGISTRY"
+    echo ""
+
+    for service in "${SERVICES[@]}"; do
+        echo "→ Building and pushing $service..."
+        context=$(get_context "$service")
+
+        if [ "$service" = "web" ]; then
+            # Web service needs build args
+            docker buildx build \
+                --platform linux/amd64,linux/arm64 \
+                --build-arg VITE_PUBLIC_URL_BASE=https://honker/purpletab \
+                --build-arg VITE_CONTROLLER_API_URL=/purpletab \
+                -t $REGISTRY/purpletab-$service:staging \
+                -f $context/Dockerfile \
+                $context \
+                --push
+        else
+            docker buildx build \
+                --platform linux/amd64,linux/arm64 \
+                -t $REGISTRY/purpletab-$service:staging \
+                -f $context/Dockerfile \
+                $context \
+                --push
+        fi
+        echo "  ✓ $service complete"
         echo ""
-        echo "📤 Pushing to registry: $REGISTRY"
-        for service in "${SERVICES[@]}"; do
-            echo "  → Pushing purpletab-$service:staging"
-            docker tag purpletab-$service:staging $REGISTRY/purpletab-$service:staging
-            docker push $REGISTRY/purpletab-$service:staging
-        done
-        echo "✅ All images pushed!"
-    else
+    done
+
+    echo "✅ All images built and pushed!"
+else
+    echo "📦 Building images for local platform..."
+    echo ""
+
+    for service in "${SERVICES[@]}"; do
+        echo "→ Building $service..."
+        context=$(get_context "$service")
+
+        if [ "$service" = "web" ]; then
+            # Web service needs build args
+            docker buildx build \
+                --build-arg VITE_PUBLIC_URL_BASE=https://honker/purpletab \
+                --build-arg VITE_CONTROLLER_API_URL=/purpletab \
+                -t purpletab-$service:staging \
+                -f $context/Dockerfile \
+                $context \
+                --load
+        else
+            docker buildx build \
+                -t purpletab-$service:staging \
+                -f $context/Dockerfile \
+                $context \
+                --load
+        fi
+        echo "  ✓ $service complete"
         echo ""
-        echo "⚠️  No REGISTRY set. Use: REGISTRY=your-registry ./build-staging.sh push"
-        exit 1
-    fi
+    done
+
+    echo "✅ Build complete!"
 fi
 
 echo ""
-echo "📋 Built images:"
+echo "📋 Images:"
 for service in "${SERVICES[@]}"; do
-    echo "   • purpletab-$service:staging"
-    [ -n "$REGISTRY" ] && [ "$PUSH" = "push" ] && echo "     $REGISTRY/purpletab-$service:staging"
+    if [ "$PUSH" = "push" ]; then
+        echo "   • $REGISTRY/purpletab-$service:staging"
+    else
+        echo "   • purpletab-$service:staging"
+    fi
 done
