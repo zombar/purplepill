@@ -3,9 +3,9 @@
 ## Prerequisites
 
 1. **External Reverse Proxy** configured to route:
-   - `https://honker/` → `localhost:3001` (Web UI)
-   - `https://honker/api/*` → `localhost:9080` (Controller API)
-   - `https://honker/content/*` → `localhost:9080` (SEO content)
+   - `http://honker/purpletab/*` → `localhost:3001` (Web UI)
+   - `http://honker/purpletab/api/*` → `localhost:9080` (Controller API)
+   - `http://honker/purpletab/content/*` → `localhost:9080` (SEO content)
 
 2. **Ollama** running and accessible:
    - Update `OLLAMA_URL` in `.env.staging` to match your setup
@@ -52,9 +52,9 @@ curl http://localhost:3001/
 
 ```caddy
 honker {
-    reverse_proxy /api/* localhost:9080
-    reverse_proxy /content/* localhost:9080
-    reverse_proxy /* localhost:3001
+    reverse_proxy /purpletab/api/* localhost:9080
+    reverse_proxy /purpletab/content/* localhost:9080
+    reverse_proxy /purpletab/* localhost:3001
 }
 ```
 
@@ -76,35 +76,12 @@ upstream purpletab_api {
     keepalive 32;
 }
 
-# HTTP redirect to HTTPS
+# HTTP server
 server {
     listen 80;
     server_name honker;
 
-    location / {
-        return 301 https://$server_name$request_uri;
-    }
-}
-
-# Main HTTPS server
-server {
-    listen 443 ssl http2;
-    server_name honker;
-
-    # SSL Configuration
-    ssl_certificate /etc/letsencrypt/live/honker/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/honker/privkey.pem;
-    ssl_session_timeout 1d;
-    ssl_session_cache shared:SSL:50m;
-    ssl_session_tickets off;
-
-    # Modern SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
-    ssl_prefer_server_ciphers off;
-
     # Security Headers
-    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
     add_header X-Frame-Options "SAMEORIGIN" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header X-XSS-Protection "1; mode=block" always;
@@ -118,8 +95,9 @@ server {
     client_max_body_size 100M;
     client_body_timeout 120s;
 
-    # API routes
-    location /api/ {
+    # API routes - strip /purpletab prefix
+    location /purpletab/api/ {
+        rewrite ^/purpletab(/api/.*)$ $1 break;
         proxy_pass http://purpletab_api;
 
         # Proxy headers
@@ -140,8 +118,9 @@ server {
         proxy_set_header Connection "";
     }
 
-    # SEO content routes
-    location /content/ {
+    # SEO content routes - strip /purpletab prefix
+    location /purpletab/content/ {
+        rewrite ^/purpletab(/content/.*)$ $1 break;
         proxy_pass http://purpletab_api;
 
         proxy_set_header Host $host;
@@ -159,14 +138,15 @@ server {
     }
 
     # Health check endpoint (optional, direct access)
-    location /health {
-        proxy_pass http://purpletab_api/health;
+    location /purpletab/health {
+        rewrite ^/purpletab(/health)$ $1 break;
+        proxy_pass http://purpletab_api;
         access_log off;
         proxy_set_header Host $host;
     }
 
-    # Web UI - catch all
-    location / {
+    # Web UI - catch all purpletab requests
+    location /purpletab/ {
         proxy_pass http://purpletab_web;
 
         # Proxy headers
@@ -223,24 +203,26 @@ Then modify `/etc/nginx/sites-available/purpletab.conf`:
 # Add to the server block locations:
 
     # API routes with rate limiting
-    location /api/ {
+    location /purpletab/api/ {
         limit_req zone=api_limit burst=20 nodelay;
         limit_conn addr 10;
 
+        rewrite ^/purpletab(/api/.*)$ $1 break;
         proxy_pass http://purpletab_api;
         # ... rest of proxy config ...
     }
 
     # SEO content with rate limiting
-    location /content/ {
+    location /purpletab/content/ {
         limit_req zone=content_limit burst=50 nodelay;
 
+        rewrite ^/purpletab(/content/.*)$ $1 break;
         proxy_pass http://purpletab_api;
         # ... rest of proxy config ...
     }
 
     # Web UI with rate limiting
-    location / {
+    location /purpletab/ {
         limit_req zone=general_limit burst=200 nodelay;
 
         proxy_pass http://purpletab_web;
@@ -265,7 +247,7 @@ Then in your site config:
 
 ```nginx
     # Cached SEO content
-    location /content/ {
+    location /purpletab/content/ {
         proxy_cache purpletab_cache;
         proxy_cache_valid 200 60m;
         proxy_cache_valid 404 10m;
@@ -275,6 +257,7 @@ Then in your site config:
 
         add_header X-Cache-Status $upstream_cache_status;
 
+        rewrite ^/purpletab(/content/.*)$ $1 break;
         proxy_pass http://purpletab_api;
         # ... rest of proxy config ...
     }
@@ -304,7 +287,8 @@ http {
 
         client_max_body_size 100M;
 
-        location /api/ {
+        location /purpletab/api/ {
+            rewrite ^/purpletab(/api/.*)$ $1 break;
             proxy_pass http://purpletab_api;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -312,13 +296,14 @@ http {
             proxy_set_header X-Forwarded-Proto $scheme;
         }
 
-        location /content/ {
+        location /purpletab/content/ {
+            rewrite ^/purpletab(/content/.*)$ $1 break;
             proxy_pass http://purpletab_api;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
         }
 
-        location / {
+        location /purpletab/ {
             proxy_pass http://purpletab_web;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
@@ -361,16 +346,19 @@ services:
   web:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.purpletab-web.rule=Host(`honker`)"
-      - "traefik.http.routers.purpletab-web.entrypoints=websecure"
+      - "traefik.http.routers.purpletab-web.rule=Host(`honker`) && PathPrefix(`/purpletab`)"
+      - "traefik.http.routers.purpletab-web.entrypoints=web"
       - "traefik.http.services.purpletab-web.loadbalancer.server.port=80"
 
   controller:
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.purpletab-api.rule=Host(`honker`) && (PathPrefix(`/api`) || PathPrefix(`/content`))"
-      - "traefik.http.routers.purpletab-api.entrypoints=websecure"
+      - "traefik.http.routers.purpletab-api.rule=Host(`honker`) && (PathPrefix(`/purpletab/api`) || PathPrefix(`/purpletab/content`))"
+      - "traefik.http.routers.purpletab-api.entrypoints=web"
       - "traefik.http.services.purpletab-api.loadbalancer.server.port=8080"
+      # Strip /purpletab prefix before forwarding to controller
+      - "traefik.http.middlewares.purpletab-strip.stripprefix.prefixes=/purpletab"
+      - "traefik.http.routers.purpletab-api.middlewares=purpletab-strip"
 ```
 
 ## Updating Deployment

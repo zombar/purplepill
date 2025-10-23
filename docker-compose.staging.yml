@@ -2,14 +2,14 @@ version: '3.8'
 
 # Staging configuration for PurpleTab
 # Assumes external reverse proxy (e.g., Caddy, Nginx, Traefik) handles:
-# - SSL/TLS termination
-# - Routing to honker domain
+# - SSL/TLS termination (optional)
+# - Routing to honker domain with /purpletab subdirectory
 # - Load balancing if needed
 #
 # External proxy should route:
-#   honker/          -> localhost:3001 (Web UI)
-#   honker/api/*     -> localhost:9080 (Controller API)
-#   honker/content/* -> localhost:9080 (SEO content)
+#   honker/purpletab/*          -> localhost:3001 (Web UI)
+#   honker/purpletab/api/*      -> localhost:9080 (Controller API)
+#   honker/purpletab/content/*  -> localhost:9080 (SEO content)
 
 services:
   controller:
@@ -20,8 +20,8 @@ services:
       - SCHEDULER_BASE_URL=http://scheduler:8080
 
       # External URLs
-      - WEB_INTERFACE_URL=https://honker
-      - PUBLIC_URL_BASE=https://honker
+      - WEB_INTERFACE_URL=http://honker/purpletab
+      - PUBLIC_URL_BASE=http://honker/purpletab
 
       # Database
       - DATABASE_PATH=/app/data/controller.db
@@ -30,7 +30,7 @@ services:
       - GENERATE_MOCK_DATA=false
 
       # CORS for staging
-      - CORS_ORIGINS=https://honker
+      - CORS_ORIGINS=http://honker
 
       # Port
       - CONTROLLER_PORT=8080
@@ -95,8 +95,8 @@ services:
       dockerfile: Dockerfile
       args:
         # Build-time environment variables for React
-        - VITE_PUBLIC_URL_BASE=https://honker
-        - CONTROLLER_API_URL=https://honker/api
+        - VITE_PUBLIC_URL_BASE=http://honker/purpletab
+        - CONTROLLER_API_URL=http://honker/purpletab/api
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80

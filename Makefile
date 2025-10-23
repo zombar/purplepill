@@ -223,7 +223,7 @@ docker-staging-up: ## Start all services in staging mode
 	@echo "Starting services in staging mode..."
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo "Staging services started!"
-	@echo "Web Interface:  https://honker (via reverse proxy)"
+	@echo "Web Interface:  http://honker/purpletab (via reverse proxy)"
 	@echo "Local Web:      http://localhost:3001"
 	@echo "Local API:      http://localhost:9080"
 
