@@ -29,7 +29,7 @@ help: ## Display this help message
 	@echo ""
 	@echo "Docker commands:"
 	@echo "  docker-build       - Build all Docker images"
-	@echo "  docker-up          - Start all services with docker-compose"
+	@echo "  docker-up          - Start all services with docker compose"
 	@echo "  docker-down        - Stop all services"
 	@echo "  docker-logs        - View logs from all services"
 	@echo "  docker-ps          - Show running containers"
@@ -132,12 +132,12 @@ lint: ## Lint code for all services
 
 docker-build: ## Build all Docker images
 	@echo "Building all Docker images..."
-	@docker-compose build
+	@docker compose build
 	@echo "All Docker images built!"
 
-docker-up: ## Start all services with docker-compose
+docker-up: ## Start all services with docker compose
 	@echo "Starting all services..."
-	@docker-compose up -d
+	@docker compose up -d
 	@echo "All services started!"
 	@echo "Web Interface:  http://localhost:3000"
 	@echo "Controller:     http://localhost:8080"
@@ -147,18 +147,18 @@ docker-up: ## Start all services with docker-compose
 
 docker-down: ## Stop all services
 	@echo "Stopping all services..."
-	@docker-compose down
+	@docker compose down
 	@echo "All services stopped!"
 
 docker-logs: ## View logs from all services
-	@docker-compose logs -f
+	@docker compose logs -f
 
 docker-ps: ## Show running containers
-	@docker-compose ps
+	@docker compose ps
 
 docker-clean: ## Remove all containers, volumes, and images
 	@echo "Cleaning Docker resources..."
-	@docker-compose down -v --rmi all
+	@docker compose down -v --rmi all
 	@echo "Docker cleanup complete!"
 
 docker-restart: ## Restart all services

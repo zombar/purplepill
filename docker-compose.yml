@@ -78,7 +78,7 @@ services:
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
-      - WEB_INTERFACE_URL=http://localhost:3000
+      - WEB_INTERFACE_URL=http://localhost:3001
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
@@ -108,7 +108,7 @@ services:
         - CONTROLLER_API_URL=http://controller:8080
     container_name: purpletab-web
     ports:
-      - "3000:80"
+      - "3001:80"
     restart: unless-stopped
     depends_on:
       controller:
