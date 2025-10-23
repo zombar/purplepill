@@ -36,5 +36,5 @@ services:
       args:
         # Build-time environment variables for React
         # Note: Vite requires VITE_ prefix for env vars to be exposed to client
-        - VITE_PUBLIC_URL_BASE=http://honker/purpletab
-        - VITE_CONTROLLER_API_URL=/purpletab
+        - VITE_PUBLIC_URL_BASE=/
+        - VITE_CONTROLLER_API_URL=

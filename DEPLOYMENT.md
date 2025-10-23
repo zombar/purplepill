@@ -18,6 +18,17 @@ make docker-staging-pull
 
 That's it! This pulls all 5 service images from ghcr.io/zombar and starts them.
 
+## Staging URL
+
+The application is hosted at: **https://purpletab.honker**
+
+Your external reverse proxy (Caddy, Nginx, Traefik, etc.) should route:
+- `purpletab.honker` → `localhost:3001` (web container)
+
+The web container's nginx handles:
+- Static files (HTML, JS, CSS, images)
+- API proxying: `/api/*` → `controller:8080` (internal)
+
 ## First Time Setup
 
 ### GitHub Authentication
@@ -64,13 +75,15 @@ make docker-staging-logs    # View logs
 
 ## Built Images
 
-All services are built as staging images and pushed to GitHub Container Registry:
+All services are built as multi-platform staging images (linux/amd64, linux/arm64) and pushed to GitHub Container Registry:
 
 - `ghcr.io/zombar/purpletab-textanalyzer:staging`
 - `ghcr.io/zombar/purpletab-scraper:staging`
 - `ghcr.io/zombar/purpletab-controller:staging`
 - `ghcr.io/zombar/purpletab-scheduler:staging`
 - `ghcr.io/zombar/purpletab-web:staging`
+
+Multi-platform support ensures images work on both ARM64 (Apple Silicon) and AMD64 (Intel/AMD) servers.
 
 ## Configuration Files
 
@@ -82,11 +95,68 @@ All services are built as staging images and pushed to GitHub Container Registry
 
 ## Staging Configuration
 
-The web service is built with:
-- VITE_PUBLIC_URL_BASE=http://honker/purpletab
-- VITE_CONTROLLER_API_URL=/purpletab
+The application is configured for subdomain hosting at `purpletab.honker`:
 
-The nginx proxy forwards /api/* requests to the controller service.
+- **Web service**: Built with `VITE_PUBLIC_URL_BASE=/` (root path)
+- **API calls**: Same-origin requests to `/api/*`
+- **CORS**: Disabled (not needed for same-origin)
+- **Nginx**: Proxies `/api/*` to controller service internally
+
+This is much simpler than subdirectory hosting - no path rewriting or base path handling needed.
+
+## External Reverse Proxy Setup
+
+Configure your reverse proxy to route the subdomain to the web container. Examples:
+
+### Caddy
+
+```
+purpletab.honker {
+    reverse_proxy localhost:3001
+}
+```
+
+### Nginx
+
+```nginx
+server {
+    listen 443 ssl http2;
+    server_name purpletab.honker;
+
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### Traefik
+
+```yaml
+http:
+  routers:
+    purpletab:
+      rule: "Host(`purpletab.honker`)"
+      service: purpletab
+      tls:
+        certResolver: myresolver
+
+  services:
+    purpletab:
+      loadBalancer:
+        servers:
+          - url: "http://localhost:3001"
+```
 
 ## Troubleshooting
 
@@ -115,8 +185,24 @@ docker pull ghcr.io/zombar/purpletab-web:staging
 ### View Running Services
 
 ```bash
-docker-compose -f docker-compose.yml -f docker-compose.staging.yml ps
+docker compose -f docker-compose.yml -f docker-compose.staging.yml ps
 ```
+
+### Platform Mismatch Warnings
+
+If you see warnings like "requested image's platform (linux/arm64) does not match the detected host platform (linux/amd64)", your images were built without multi-platform support.
+
+To fix:
+1. Rebuild and push with multi-platform support:
+   ```bash
+   make docker-staging-push
+   ```
+2. Pull on the server:
+   ```bash
+   make docker-staging-pull
+   ```
+
+The updated build script automatically creates multi-platform images that work on both ARM64 and AMD64.
 
 ## Future: CI/CD Integration
 

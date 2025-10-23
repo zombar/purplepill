@@ -226,11 +226,11 @@ docker-staging-push: ## Build and push all images to ghcr.io/zombar
 
 docker-staging-deploy: ## Full local deploy: build and start all services (dev machine)
 	@echo "🚀 Deploying to staging..."
-	@./deploy-staging.sh
+	@./build-staging.sh
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo ""
 	@echo "✅ Staging deployment complete!"
-	@echo "   Web Interface: http://honker/purpletab (via reverse proxy)"
+	@echo "   Staging URL:   https://purpletab.honker (via reverse proxy)"
 	@echo "   Local Web:     http://localhost:3001"
 	@echo "   Local API:     http://localhost:9080"
 

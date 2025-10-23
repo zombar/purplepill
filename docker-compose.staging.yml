@@ -2,14 +2,14 @@ version: '3.8'
 
 # Staging configuration for PurpleTab
 # Assumes external reverse proxy (e.g., Caddy, Nginx, Traefik) handles:
-# - SSL/TLS termination (optional)
-# - Routing to honker domain with /purpletab subdirectory
+# - SSL/TLS termination
+# - Routing purpletab.honker subdomain to web container
 # - Load balancing if needed
 #
 # External proxy should route:
-#   honker/purpletab/*          -> localhost:3001 (Web UI)
-#   honker/purpletab/api/*      -> localhost:9080 (Controller API)
-#   honker/purpletab/content/*  -> localhost:9080 (SEO content)
+#   purpletab.honker -> localhost:3001 (Web UI)
+#
+# The web container's nginx then proxies /api/* to the controller service internally
 
 services:
   controller:
@@ -21,8 +21,8 @@ services:
       - SCHEDULER_BASE_URL=http://scheduler:8080
 
       # External URLs
-      - WEB_INTERFACE_URL=http://honker/purpletab
-      - PUBLIC_URL_BASE=http://honker/purpletab
+      - WEB_INTERFACE_URL=https://purpletab.honker
+      - PUBLIC_URL_BASE=https://purpletab.honker
 
       # Database
       - DATABASE_PATH=/app/data/controller.db
@@ -30,8 +30,8 @@ services:
       # Disable mock data in staging
       - GENERATE_MOCK_DATA=false
 
-      # CORS for staging
-      - CORS_ORIGINS=http://honker
+      # CORS disabled (same-origin requests via nginx proxy)
+      - CORS_ORIGINS=
 
       # Port
       - CONTROLLER_PORT=8080
