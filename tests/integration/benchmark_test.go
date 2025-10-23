@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+const (
+	benchControllerURL    = "http://localhost:18080"
+	benchScraperURL       = "http://localhost:18081"
+	benchTextAnalyzerURL  = "http://localhost:18082"
+)
+
 // BenchmarkResult holds benchmark statistics
 type BenchmarkResult struct {
 	TotalRequests     int64
@@ -74,7 +80,7 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		BinaryPath:  scraperBin,
 		Args:        []string{"-port", "18081", "-db", services.GetDBPath("scraper")},
 		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
-		HealthCheck: scraperURL + "/health",
+		HealthCheck: benchScraperURL + "/health",
 	}
 
 	analyzerConfig := ServiceConfig{
@@ -83,7 +89,7 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		BinaryPath:  analyzerBin,
 		Args:        []string{"-port", "18082", "-db", services.GetDBPath("textanalyzer")},
 		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
-		HealthCheck: textAnalyzerURL + "/health",
+		HealthCheck: benchTextAnalyzerURL + "/health",
 	}
 
 	controllerConfig := ServiceConfig{
@@ -92,11 +98,11 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		BinaryPath:  controllerBin,
 		Env:         []string{
 			"CONTROLLER_PORT=18080",
-			"SCRAPER_BASE_URL=" + scraperURL,
-			"TEXTANALYZER_BASE_URL=" + textAnalyzerURL,
+			"SCRAPER_BASE_URL=" + benchScraperURL,
+			"TEXTANALYZER_BASE_URL=" + benchTextAnalyzerURL,
 			"DATABASE_PATH=" + services.GetDBPath("controller"),
 		},
-		HealthCheck: controllerURL + "/health",
+		HealthCheck: benchControllerURL + "/health",
 	}
 
 	if err := services.StartService(scraperConfig); err != nil {
@@ -138,7 +144,7 @@ func benchmarkDirectAnalysis(t *testing.T, totalRequests, concurrency int) {
 		}
 
 		client := &http.Client{Timeout: 60 * time.Second}
-		return client.Post(controllerURL+"/analyze", "application/json", bytes.NewReader(body))
+		return client.Post(benchControllerURL+"/api/analyze", "application/json", bytes.NewReader(body))
 	})
 
 	printBenchmarkResults(t, "Direct Text Analysis", result)
@@ -165,7 +171,7 @@ func benchmarkMixedWorkload(t *testing.T, requestsPerType, concurrency int) {
 				return nil, err
 			}
 
-			return client.Post(controllerURL+"/analyze", "application/json", bytes.NewReader(body))
+			return client.Post(benchControllerURL+"/api/analyze", "application/json", bytes.NewReader(body))
 		} else {
 			// URL scraping
 			reqBody := map[string]interface{}{
@@ -177,7 +183,7 @@ func benchmarkMixedWorkload(t *testing.T, requestsPerType, concurrency int) {
 				return nil, err
 			}
 
-			return client.Post(controllerURL+"/scrape", "application/json", bytes.NewReader(body))
+			return client.Post(benchControllerURL+"/api/scrape", "application/json", bytes.NewReader(body))
 		}
 	})
 
@@ -239,7 +245,7 @@ func runLoadTest(t *testing.T, totalRequests, concurrency int, requestFunc func(
 					continue
 				}
 
-				if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 					atomic.AddInt64(&failCount, 1)
 					t.Logf("Request %d returned status %d", i, resp.StatusCode)
 				} else {
