@@ -98,6 +98,11 @@ server {
     add_header X-XSS-Protection "1; mode=block" always;
     add_header Referrer-Policy "no-referrer-when-downgrade" always;
 
+    # IMPORTANT: Do NOT set a restrictive Content-Security-Policy header here
+    # The React app needs to load scripts and stylesheets normally
+    # If you need CSP, use something like:
+    # add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';" always;
+
     # Logging
     access_log /var/log/nginx/purpletab-access.log;
     error_log /var/log/nginx/purpletab-error.log;
