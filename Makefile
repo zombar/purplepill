@@ -226,7 +226,7 @@ docker-staging-push: ## Build and push all images to ghcr.io/zombar
 
 docker-staging-deploy: ## Full local deploy: build and start all services (dev machine)
 	@echo "🚀 Deploying to staging..."
-	@./build-staging.sh
+	@./deploy-staging.sh
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo ""
 	@echo "✅ Staging deployment complete!"
