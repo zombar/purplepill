@@ -381,13 +381,18 @@ To migrate to PostgreSQL:
 
 ### Service Test Coverage
 
-| Service | Tests | Coverage |
-|---------|-------|----------|
-| Controller | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
-| Scraper | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
-| TextAnalyzer | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
-| Scheduler | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | 1,393 LOC |
-| Web | ![Tests](https://img.shields.io/badge/tests-passing-brightgreen) | TBD |
+All services include comprehensive test suites:
+
+| Service | Unit Tests | E2E/Integration Tests | Test Types |
+|---------|-----------|----------------------|------------|
+| Controller | ✓ Go tests | ✓ Integration suite | API handlers, storage, orchestration |
+| Scraper | ✓ Go tests | ✓ Integration suite | Content extraction, AI features, storage |
+| TextAnalyzer | ✓ Go tests | ✓ Integration suite | Analysis algorithms, AI detection, scoring |
+| Scheduler | ✓ Go tests | ✓ Integration suite | Cron scheduling, task management |
+| Web | ✓ Vitest (unit) | ✓ Playwright (195 E2E) | Components, hooks, integration |
+| **Integration** | - | ✓ Full stack tests | Service orchestration, benchmarks |
+
+Run `make test` for unit tests, `make test-integration` for integration tests, or `make test-all` for complete test suite.
 
 ### Language Breakdown
 
