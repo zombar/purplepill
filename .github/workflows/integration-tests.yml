@@ -28,6 +28,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.9'
+          cache-dependency-path: tests/integration/go.sum
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -36,9 +37,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
-          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/Dockerfile', '**/go.sum', '**/go.mod', '**/package-lock.json') }}
           restore-keys: |
-            ${{ runner.os }}-buildx-
+            ${{ runner.os }}-docker-
 
       - name: Build Docker images
         run: |
@@ -47,6 +48,7 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
           COMPOSE_DOCKER_CLI_BUILD: 1
+          BUILDKIT_INLINE_CACHE: 1
 
       - name: Start services
         run: |
@@ -152,15 +154,28 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.9'
+          cache-dependency-path: tests/integration/go.sum
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/Dockerfile', '**/go.sum', '**/go.mod', '**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
 
       - name: Build and start services
         run: |
           docker compose build
           docker compose up -d
           sleep 15
+        env:
+          DOCKER_BUILDKIT: 1
+          COMPOSE_DOCKER_CLI_BUILD: 1
+          BUILDKIT_INLINE_CACHE: 1
 
       - name: Run benchmark tests
         run: |

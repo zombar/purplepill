@@ -56,8 +56,24 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
+
       - name: Install Playwright Browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps chromium
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: npx playwright install-deps chromium
 
       - name: Run Playwright E2E tests
         run: npm run test:e2e
@@ -108,8 +124,24 @@ jobs:
       - name: Build application
         run: npm run build
 
+      - name: Get Playwright version
+        id: playwright-version-full
+        run: echo "version=$(node -p "require('./package.json').devDependencies['@playwright/test']")" >> $GITHUB_OUTPUT
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache-full
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-all-${{ steps.playwright-version-full.outputs.version }}
+
       - name: Install Playwright Browsers (all browsers)
+        if: steps.playwright-cache-full.outputs.cache-hit != 'true'
         run: npx playwright install --with-deps
+
+      - name: Install Playwright system dependencies
+        if: steps.playwright-cache-full.outputs.cache-hit == 'true'
+        run: npx playwright install-deps
 
       - name: Run Playwright E2E tests (all browsers)
         run: npm run test:e2e
