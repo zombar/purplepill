@@ -49,6 +49,11 @@ help: ## Display this help message
 	@echo "  docker-staging-down    - Stop all staging services"
 	@echo "  docker-staging-logs    - View logs from staging services"
 	@echo ""
+	@echo "Volume Management:"
+	@echo "  docker-staging-volumes        - List volumes and their sizes"
+	@echo "  docker-staging-volume-inspect - Inspect volume contents"
+	@echo "  docker-staging-clean-volumes  - Remove orphaned volumes"
+	@echo ""
 	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
 	@echo ""
 	@echo "Docker service commands (per service):"
@@ -244,6 +249,30 @@ docker-staging-down: ## Stop all staging services
 
 docker-staging-logs: ## View logs from staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
+
+docker-staging-volumes: ## List volumes and their sizes
+	@echo "Current volumes:"
+	@docker volume ls --filter name=purpletab
+	@echo ""
+	@echo "Volume sizes:"
+	@docker system df -v | grep purpletab || echo "No purpletab volumes found"
+
+docker-staging-volume-inspect: ## Inspect volume contents and verify data persistence
+	@echo "Checking controller database..."
+	@docker run --rm -v purpletab_controller-data:/data alpine ls -lh /data/ || echo "No controller data found"
+	@echo ""
+	@echo "Checking scraper database..."
+	@docker run --rm -v purpletab_scraper-data:/data alpine ls -lh /data/ || echo "No scraper data found"
+	@echo ""
+	@echo "Checking scraper storage..."
+	@docker run --rm -v purpletab_scraper-storage:/data alpine ls -lh /data/ || echo "No scraper storage found"
+
+docker-staging-clean-volumes: ## Remove orphaned volumes (WARNING: removes old controller_* volumes)
+	@echo "WARNING: This will remove old orphaned volumes"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@docker volume rm controller_controller-data 2>/dev/null || echo "No controller_controller-data volume to remove"
+	@echo "Orphaned volumes cleaned"
 
 docker-staging-pull: ## Pull latest images and start services (for server)
 	@./deploy-staging.sh

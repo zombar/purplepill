@@ -137,9 +137,4 @@ networks:
   proxy:
     external: true
 
-volumes:
-  controller-data:
-  scraper-data:
-  scraper-storage:
-  textanalyzer-data:
-  scheduler-data:
+# Volumes are inherited from docker-compose.yml - no need to redefine
