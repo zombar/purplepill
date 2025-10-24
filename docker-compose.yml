@@ -1,7 +1,7 @@
 services:
   # Text Analyzer Service
   textanalyzer:
-    image: localhost/purpletab-textanalyzer:latest
+    image: purpletab-textanalyzer:latest
     build:
       context: ./apps/textanalyzer
       dockerfile: Dockerfile
@@ -28,7 +28,7 @@ services:
 
   # Scraper Service
   scraper:
-    image: localhost/purpletab-scraper:latest
+    image: purpletab-scraper:latest
     build:
       context: ./apps/scraper
       dockerfile: Dockerfile
@@ -60,7 +60,7 @@ services:
 
   # Controller Service
   controller:
-    image: localhost/purpletab-controller:latest
+    image: purpletab-controller:latest
     build:
       context: ./apps/controller
       dockerfile: Dockerfile
@@ -78,7 +78,7 @@ services:
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
-      - WEB_INTERFACE_URL=http://localhost:3000
+      - WEB_INTERFACE_URL=http://web:3001
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
@@ -95,10 +95,11 @@ services:
       start_period: 20s
     networks:
       - purpletab-network
+      - proxy
 
   # Web UI Service
   web:
-    image: localhost/purpletab-web:latest
+    image: purpletab-web:latest
     build:
       context: ./apps/web
       dockerfile: Dockerfile
@@ -108,7 +109,7 @@ services:
         - CONTROLLER_API_URL=http://controller:8080
     container_name: purpletab-web
     ports:
-      - "3000:80"
+      - "3001:80"
     restart: unless-stopped
     depends_on:
       controller:
@@ -121,10 +122,11 @@ services:
       start_period: 5s
     networks:
       - purpletab-network
+      - proxy
 
   # Scheduler Service
   scheduler:
-    image: localhost/purpletab-scheduler:latest
+    image: purpletab-scheduler:latest
     build:
       context: ./apps/scheduler
       dockerfile: Dockerfile
@@ -169,4 +171,7 @@ volumes:
 networks:
   purpletab-network:
     name: purpletab-network
+    driver: bridge
+  proxy:
+    name: proxy
     driver: bridge

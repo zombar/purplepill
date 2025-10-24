@@ -1,0 +1,40 @@
+version: '3.8'
+
+# Build configuration for staging images
+# Usage: docker-compose -f docker-compose.build-staging.yml build
+
+services:
+  textanalyzer:
+    image: purpletab-textanalyzer:staging
+    build:
+      context: ./apps/textanalyzer
+      dockerfile: Dockerfile
+
+  scraper:
+    image: purpletab-scraper:staging
+    build:
+      context: ./apps/scraper
+      dockerfile: Dockerfile
+
+  controller:
+    image: purpletab-controller:staging
+    build:
+      context: ./apps/controller
+      dockerfile: Dockerfile
+
+  scheduler:
+    image: purpletab-scheduler:staging
+    build:
+      context: ./apps/scheduler
+      dockerfile: Dockerfile
+
+  web:
+    image: purpletab-web:staging
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+      args:
+        # Build-time environment variables for React
+        # Note: Vite requires VITE_ prefix for env vars to be exposed to client
+        - VITE_PUBLIC_URL_BASE=/
+        - VITE_CONTROLLER_API_URL=

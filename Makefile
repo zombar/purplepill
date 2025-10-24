@@ -1,5 +1,5 @@
 .PHONY: help build test clean install fmt lint docker-build docker-up docker-down docker-logs \
-        controller-% scraper-% textanalyzer-% web-% scheduler-%
+        docker-staging-% controller-% scraper-% textanalyzer-% web-% scheduler-%
 
 # Submodule directories
 CONTROLLER_DIR=apps/controller
@@ -28,12 +28,47 @@ help: ## Display this help message
 	@echo "  test-all               - Run all tests (unit + integration)"
 	@echo ""
 	@echo "Docker commands:"
-	@echo "  docker-build       - Build all Docker images"
-	@echo "  docker-up          - Start all services with docker-compose"
-	@echo "  docker-down        - Stop all services"
-	@echo "  docker-logs        - View logs from all services"
-	@echo "  docker-ps          - Show running containers"
-	@echo "  docker-clean       - Remove all containers, volumes, and images"
+	@echo "  docker-build           - Build all Docker images"
+	@echo "  docker-up              - Start all services with docker compose"
+	@echo "  docker-down            - Stop all services"
+	@echo "  docker-logs            - View logs from all services"
+	@echo "  docker-ps              - Show running containers"
+	@echo "  docker-clean           - Remove all containers, volumes, and images"
+	@echo "  docker-restart         - Restart all services"
+	@echo "  docker-rebuild         - Rebuild and restart all services"
+	@echo "  docker-health          - Check health of all services"
+	@echo ""
+	@echo "Docker staging commands (dev machine):"
+	@echo "  docker-staging-build   - Build all service images for staging"
+	@echo "  docker-staging-push    - Build and push all images to ghcr.io/zombar"
+	@echo "  docker-staging-deploy  - Full local deploy: build and start services"
+	@echo ""
+	@echo "Docker staging commands (server):"
+	@echo "  docker-staging-pull    - Pull latest images and start services"
+	@echo "  docker-staging-up      - Start services (without pulling)"
+	@echo "  docker-staging-down    - Stop all staging services"
+	@echo "  docker-staging-logs    - View logs from staging services"
+	@echo ""
+	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
+	@echo ""
+	@echo "Docker service commands (per service):"
+	@echo "  docker-logs-<service>  - View logs for specific service (e.g., docker-logs-controller)"
+	@echo "  docker-restart-<service> - Restart specific service"
+	@echo "  docker-shell-<service> - Open shell in specific service"
+	@echo "  docker-exec-<service>  - Execute command in service (use CMD='...')"
+	@echo ""
+	@echo "Docker management:"
+	@echo "  docker-volumes         - List all volumes"
+	@echo "  docker-volumes-inspect - Inspect volume usage"
+	@echo "  docker-volumes-clean   - Remove unused volumes"
+	@echo "  docker-images          - List all images"
+	@echo "  docker-prune           - Remove unused containers and images"
+	@echo "  docker-prune-all       - Remove ALL unused resources (destructive)"
+	@echo "  docker-stats           - Show resource usage of containers"
+	@echo ""
+	@echo "Docker database access:"
+	@echo "  docker-db-<service>    - Access SQLite database for service"
+	@echo "  docker-backup          - Backup all databases and storage"
 	@echo ""
 	@echo "Per-service commands (use <service>-<command>):"
 	@echo "  controller-build   - Build controller service"
@@ -132,12 +167,12 @@ lint: ## Lint code for all services
 
 docker-build: ## Build all Docker images
 	@echo "Building all Docker images..."
-	@docker-compose build
+	@docker compose build
 	@echo "All Docker images built!"
 
-docker-up: ## Start all services with docker-compose
+docker-up: ## Start all services with docker compose
 	@echo "Starting all services..."
-	@docker-compose up -d
+	@docker compose up -d
 	@echo "All services started!"
 	@echo "Web Interface:  http://localhost:3000"
 	@echo "Controller:     http://localhost:8080"
@@ -147,23 +182,195 @@ docker-up: ## Start all services with docker-compose
 
 docker-down: ## Stop all services
 	@echo "Stopping all services..."
-	@docker-compose down
+	@docker compose down
 	@echo "All services stopped!"
 
 docker-logs: ## View logs from all services
-	@docker-compose logs -f
+	@docker compose logs -f
 
 docker-ps: ## Show running containers
-	@docker-compose ps
+	@docker compose ps
 
 docker-clean: ## Remove all containers, volumes, and images
 	@echo "Cleaning Docker resources..."
-	@docker-compose down -v --rmi all
+	@docker compose down -v --rmi all
 	@echo "Docker cleanup complete!"
 
 docker-restart: ## Restart all services
 	@$(MAKE) docker-down
 	@$(MAKE) docker-up
+
+docker-rebuild: ## Rebuild and restart all services
+	@echo "Rebuilding and restarting all services..."
+	@docker compose down
+	@docker compose build --no-cache
+	@docker compose up -d
+	@echo "All services rebuilt and restarted!"
+
+docker-health: ## Check health of all services
+	@echo "Checking health of all services..."
+	@docker compose ps
+	@echo ""
+	@echo "Testing endpoints..."
+	@echo -n "Controller (9080): " && curl -sf http://localhost:9080/health > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+	@echo -n "Scraper (9081): " && curl -sf http://localhost:9081/health > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+	@echo -n "TextAnalyzer (9082): " && curl -sf http://localhost:9082/health > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+	@echo -n "Scheduler (9083): " && curl -sf http://localhost:9083/health > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+	@echo -n "Web UI (3001): " && curl -sf http://localhost:3001 > /dev/null && echo "✓ Healthy" || echo "✗ Unhealthy"
+
+# ==================== Docker Staging Commands ====================
+
+docker-staging-build: ## Build all service images for staging
+	@./build-staging.sh
+
+docker-staging-push: ## Build and push all images to ghcr.io/zombar
+	@./build-staging.sh push
+
+docker-staging-deploy: ## Full local deploy: build and start all services (dev machine)
+	@echo "🚀 Deploying to staging..."
+	@./build-staging.sh
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+	@echo ""
+	@echo "✅ Staging deployment complete!"
+	@echo "   Staging URL:   https://purpletab.honker (via reverse proxy)"
+	@echo "   Local Web:     http://localhost:3001"
+	@echo "   Local API:     http://localhost:9080"
+
+docker-staging-up: ## Start all services in staging mode
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+
+docker-staging-down: ## Stop all staging services
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
+
+docker-staging-logs: ## View logs from staging services
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
+
+docker-staging-pull: ## Pull latest images and start services (for server)
+	@./deploy-staging.sh
+
+# ==================== Docker Per-Service Commands ====================
+
+docker-logs-controller: ## View logs for controller service
+	@docker compose logs -f controller
+
+docker-logs-scraper: ## View logs for scraper service
+	@docker compose logs -f scraper
+
+docker-logs-textanalyzer: ## View logs for textanalyzer service
+	@docker compose logs -f textanalyzer
+
+docker-logs-scheduler: ## View logs for scheduler service
+	@docker compose logs -f scheduler
+
+docker-logs-web: ## View logs for web service
+	@docker compose logs -f web
+
+docker-restart-controller: ## Restart controller service
+	@docker compose restart controller
+
+docker-restart-scraper: ## Restart scraper service
+	@docker compose restart scraper
+
+docker-restart-textanalyzer: ## Restart textanalyzer service
+	@docker compose restart textanalyzer
+
+docker-restart-scheduler: ## Restart scheduler service
+	@docker compose restart scheduler
+
+docker-restart-web: ## Restart web service
+	@docker compose restart web
+
+docker-shell-controller: ## Open shell in controller container
+	@docker compose exec controller sh
+
+docker-shell-scraper: ## Open shell in scraper container
+	@docker compose exec scraper sh
+
+docker-shell-textanalyzer: ## Open shell in textanalyzer container
+	@docker compose exec textanalyzer sh
+
+docker-shell-scheduler: ## Open shell in scheduler container
+	@docker compose exec scheduler sh
+
+docker-shell-web: ## Open shell in web container
+	@docker compose exec web sh
+
+docker-exec-controller: ## Execute command in controller (use CMD='...')
+	@docker compose exec controller $(CMD)
+
+docker-exec-scraper: ## Execute command in scraper (use CMD='...')
+	@docker compose exec scraper $(CMD)
+
+docker-exec-textanalyzer: ## Execute command in textanalyzer (use CMD='...')
+	@docker compose exec textanalyzer $(CMD)
+
+docker-exec-scheduler: ## Execute command in scheduler (use CMD='...')
+	@docker compose exec scheduler $(CMD)
+
+docker-exec-web: ## Execute command in web (use CMD='...')
+	@docker compose exec web $(CMD)
+
+# ==================== Docker Management Commands ====================
+
+docker-volumes: ## List all volumes
+	@echo "Docker volumes:"
+	@docker volume ls | grep purpletab || echo "No purpletab volumes found"
+
+docker-volumes-inspect: ## Inspect volume usage
+	@echo "Volume details:"
+	@docker compose exec controller du -sh /app/data 2>/dev/null || echo "Controller volume not mounted"
+	@docker compose exec scraper du -sh /app/data /app/storage 2>/dev/null || echo "Scraper volume not mounted"
+	@docker compose exec textanalyzer du -sh /data 2>/dev/null || echo "TextAnalyzer volume not mounted"
+	@docker compose exec scheduler du -sh /app/data 2>/dev/null || echo "Scheduler volume not mounted"
+
+docker-volumes-clean: ## Remove unused volumes (WARNING: destructive)
+	@echo "⚠️  WARNING: This will remove unused Docker volumes!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@docker volume prune -f
+	@echo "Unused volumes removed!"
+
+docker-images: ## List all purpletab images
+	@echo "PurpleTab Docker images:"
+	@docker images | grep -E "(REPOSITORY|purpletab)" || echo "No purpletab images found"
+
+docker-prune: ## Remove unused containers, networks, and images
+	@echo "Pruning unused Docker resources..."
+	@docker system prune -f
+	@echo "Docker prune complete!"
+
+docker-prune-all: ## Remove ALL unused Docker resources including volumes (WARNING: destructive)
+	@echo "⚠️  WARNING: This will remove ALL unused Docker resources including volumes!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@docker system prune -af --volumes
+	@echo "All unused Docker resources removed!"
+
+# Database access shortcuts
+docker-db-controller: ## Access controller SQLite database
+	@docker compose exec controller sqlite3 /app/data/controller.db
+
+docker-db-scraper: ## Access scraper SQLite database
+	@docker compose exec scraper sqlite3 /app/data/scraper.db
+
+docker-db-textanalyzer: ## Access textanalyzer SQLite database
+	@docker compose exec textanalyzer sqlite3 /data/textanalyzer.db
+
+docker-db-scheduler: ## Access scheduler SQLite database
+	@docker compose exec scheduler sqlite3 /app/data/scheduler.db
+
+# Backup commands
+docker-backup: ## Backup all databases and storage
+	@echo "Creating backup..."
+	@mkdir -p backups/$(shell date +%Y%m%d-%H%M%S)
+	@docker cp $$(docker compose ps -q controller):/app/data/controller.db backups/$(shell date +%Y%m%d-%H%M%S)/
+	@docker cp $$(docker compose ps -q scraper):/app/data/scraper.db backups/$(shell date +%Y%m%d-%H%M%S)/
+	@docker cp $$(docker compose ps -q textanalyzer):/data/textanalyzer.db backups/$(shell date +%Y%m%d-%H%M%S)/
+	@docker cp $$(docker compose ps -q scheduler):/app/data/scheduler.db backups/$(shell date +%Y%m%d-%H%M%S)/
+	@echo "Backup complete! Location: backups/$(shell date +%Y%m%d-%H%M%S)/"
+
+docker-stats: ## Show resource usage of running containers
+	@docker stats --no-stream $$(docker compose ps -q)
 
 # ==================== Per-Service Commands ====================
 
