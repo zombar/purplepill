@@ -49,14 +49,12 @@ help: ## Display this help message
 	@echo "  docker-staging-down         - Stop all staging services"
 	@echo "  docker-staging-down-volumes - Stop and DELETE ALL DATA"
 	@echo "  docker-staging-reset        - Complete reset (stop, delete data, restart)"
-	@echo "  docker-staging-hard-reset   - Nuclear option - force remove volumes"
 	@echo "  docker-staging-logs         - View logs from staging services"
 	@echo ""
 	@echo "Volume Management:"
 	@echo "  docker-staging-volumes        - List volumes and their sizes"
 	@echo "  docker-staging-volume-inspect - Inspect volume contents"
 	@echo "  docker-staging-verify-mounts  - Show actual mounts for running containers"
-	@echo "  docker-staging-check-data     - Check database row counts (verify empty)"
 	@echo "  docker-staging-clean-volumes  - Remove orphaned volumes"
 	@echo ""
 	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
@@ -255,48 +253,17 @@ docker-staging-down: ## Stop all staging services
 docker-staging-down-volumes: ## Stop staging services and remove volumes (DELETES ALL DATA)
 	@echo "WARNING: This will delete ALL data in staging volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
+	@read
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
 	@echo "All staging data deleted"
 
 docker-staging-reset: ## Complete reset - stop, remove volumes, restart (DELETES ALL DATA)
 	@echo "WARNING: This will delete ALL data and restart staging!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
-	@echo "Stopping services..."
+	@read
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
-	@echo "Volumes after down:"
-	@docker volume ls | grep purpletab || echo "No purpletab volumes found"
-	@echo ""
-	@echo "Starting services..."
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
-	@echo ""
-	@echo "Waiting for services to be healthy..."
-	@sleep 5
-	@echo ""
 	@echo "Staging environment reset complete"
-	@echo "Verify empty state at: http://localhost:3001"
-	@echo "If you still see data, try: make docker-staging-hard-reset"
-
-docker-staging-hard-reset: ## Nuclear option - force remove all volumes and restart (DELETES ALL DATA)
-	@echo "⚠️  NUCLEAR OPTION: Force removing all purpletab volumes!"
-	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
-	@echo "Stopping services..."
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
-	@echo "Force removing volumes..."
-	@docker volume rm purpletab_controller-data 2>/dev/null || echo "controller-data not found"
-	@docker volume rm purpletab_scraper-data 2>/dev/null || echo "scraper-data not found"
-	@docker volume rm purpletab_scraper-storage 2>/dev/null || echo "scraper-storage not found"
-	@docker volume rm purpletab_textanalyzer-data 2>/dev/null || echo "textanalyzer-data not found"
-	@docker volume rm purpletab_scheduler-data 2>/dev/null || echo "scheduler-data not found"
-	@echo "Remaining volumes:"
-	@docker volume ls | grep purpletab || echo "No purpletab volumes found (good!)"
-	@echo ""
-	@echo "Starting services with fresh volumes..."
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
-	@echo ""
-	@echo "Hard reset complete - all data wiped"
 
 docker-staging-logs: ## View logs from staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
@@ -322,19 +289,10 @@ docker-staging-verify-mounts: ## Show actual volume mounts for running container
 	@echo "Checking volume mounts for running containers..."
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml ps -q | xargs -I {} docker inspect {} --format='{{.Name}}: {{range .Mounts}}{{.Source}} -> {{.Destination}} {{end}}' 2>/dev/null || echo "No containers running"
 
-docker-staging-check-data: ## Check if databases actually contain data
-	@echo "=== Controller Database Row Counts ==="
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml exec -T controller sh -c 'sqlite3 /app/data/controller.db "SELECT COUNT(*) as requests FROM requests; SELECT COUNT(*) as tags FROM tags;"' 2>/dev/null || echo "Controller not running"
-	@echo ""
-	@echo "=== Scraper Database Row Counts ==="
-	@docker compose -f docker-compose.yml -f docker-compose.staging.yml exec -T scraper sh -c 'sqlite3 /app/data/scraper.db "SELECT COUNT(*) as scraped_data FROM scraped_data; SELECT COUNT(*) as images FROM images;"' 2>/dev/null || echo "Scraper not running"
-	@echo ""
-	@echo "=== Expected: All counts should be 0 if truly empty ==="
-
 docker-staging-clean-volumes: ## Remove orphaned volumes (WARNING: removes old controller_* volumes)
 	@echo "WARNING: This will remove old orphaned volumes"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
+	@read
 	@docker volume rm controller_controller-data 2>/dev/null || echo "No controller_controller-data volume to remove"
 	@echo "Orphaned volumes cleaned"
 
@@ -419,7 +377,7 @@ docker-volumes-inspect: ## Inspect volume usage
 docker-volumes-clean: ## Remove unused volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove unused Docker volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
+	@read
 	@docker volume prune -f
 	@echo "Unused volumes removed!"
 
@@ -435,7 +393,7 @@ docker-prune: ## Remove unused containers, networks, and images
 docker-prune-all: ## Remove ALL unused Docker resources including volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove ALL unused Docker resources including volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read _
+	@read
 	@docker system prune -af --volumes
 	@echo "All unused Docker resources removed!"
 
