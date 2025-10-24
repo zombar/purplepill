@@ -253,14 +253,14 @@ docker-staging-down: ## Stop all staging services
 docker-staging-down-volumes: ## Stop staging services and remove volumes (DELETES ALL DATA)
 	@echo "WARNING: This will delete ALL data in staging volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read _
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
 	@echo "All staging data deleted"
 
 docker-staging-reset: ## Complete reset - stop, remove volumes, restart (DELETES ALL DATA)
 	@echo "WARNING: This will delete ALL data and restart staging!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read _
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo "Staging environment reset complete"
@@ -292,7 +292,7 @@ docker-staging-verify-mounts: ## Show actual volume mounts for running container
 docker-staging-clean-volumes: ## Remove orphaned volumes (WARNING: removes old controller_* volumes)
 	@echo "WARNING: This will remove old orphaned volumes"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read _
 	@docker volume rm controller_controller-data 2>/dev/null || echo "No controller_controller-data volume to remove"
 	@echo "Orphaned volumes cleaned"
 
@@ -377,7 +377,7 @@ docker-volumes-inspect: ## Inspect volume usage
 docker-volumes-clean: ## Remove unused volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove unused Docker volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read _
 	@docker volume prune -f
 	@echo "Unused volumes removed!"
 
@@ -393,7 +393,7 @@ docker-prune: ## Remove unused containers, networks, and images
 docker-prune-all: ## Remove ALL unused Docker resources including volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove ALL unused Docker resources including volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read _
 	@docker system prune -af --volumes
 	@echo "All unused Docker resources removed!"
 
