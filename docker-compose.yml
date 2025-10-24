@@ -174,4 +174,4 @@ networks:
     driver: bridge
   proxy:
     name: proxy
-    driver: bridge
+    external: true
