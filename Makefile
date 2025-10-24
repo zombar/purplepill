@@ -44,10 +44,18 @@ help: ## Display this help message
 	@echo "  docker-staging-deploy  - Full local deploy: build and start services"
 	@echo ""
 	@echo "Docker staging commands (server):"
-	@echo "  docker-staging-pull    - Pull latest images and start services"
-	@echo "  docker-staging-up      - Start services (without pulling)"
-	@echo "  docker-staging-down    - Stop all staging services"
-	@echo "  docker-staging-logs    - View logs from staging services"
+	@echo "  docker-staging-pull         - Pull latest images and start services"
+	@echo "  docker-staging-up           - Start services (without pulling)"
+	@echo "  docker-staging-down         - Stop all staging services"
+	@echo "  docker-staging-down-volumes - Stop and DELETE ALL DATA"
+	@echo "  docker-staging-reset        - Complete reset (stop, delete data, restart)"
+	@echo "  docker-staging-logs         - View logs from staging services"
+	@echo ""
+	@echo "Volume Management:"
+	@echo "  docker-staging-volumes        - List volumes and their sizes"
+	@echo "  docker-staging-volume-inspect - Inspect volume contents"
+	@echo "  docker-staging-verify-mounts  - Show actual mounts for running containers"
+	@echo "  docker-staging-clean-volumes  - Remove orphaned volumes"
 	@echo ""
 	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
 	@echo ""
@@ -166,7 +174,9 @@ lint: ## Lint code for all services
 # ==================== Docker Commands ====================
 
 docker-build: ## Build all Docker images
-	@echo "Building all Docker images..."
+	@echo "Running full test suite before building..."
+	@$(MAKE) test
+	@echo "✅ All tests passed! Proceeding with Docker build..."
 	@docker compose build
 	@echo "All Docker images built!"
 
@@ -202,6 +212,9 @@ docker-restart: ## Restart all services
 
 docker-rebuild: ## Rebuild and restart all services
 	@echo "Rebuilding and restarting all services..."
+	@echo "Running full test suite before rebuild..."
+	@$(MAKE) test
+	@echo "✅ All tests passed! Proceeding with rebuild..."
 	@docker compose down
 	@docker compose build --no-cache
 	@docker compose up -d
@@ -221,13 +234,22 @@ docker-health: ## Check health of all services
 # ==================== Docker Staging Commands ====================
 
 docker-staging-build: ## Build all service images for staging
+	@echo "Running full test suite before staging build..."
+	@$(MAKE) test
+	@echo "✅ All tests passed! Proceeding with staging build..."
 	@./build-staging.sh
 
 docker-staging-push: ## Build and push all images to ghcr.io/zombar
+	@echo "Running full test suite before staging push..."
+	@$(MAKE) test
+	@echo "✅ All tests passed! Proceeding with staging push..."
 	@./build-staging.sh push
 
 docker-staging-deploy: ## Full local deploy: build and start all services (dev machine)
 	@echo "🚀 Deploying to staging..."
+	@echo "Running full test suite before deployment..."
+	@$(MAKE) test
+	@echo "✅ All tests passed! Proceeding with deployment..."
 	@./build-staging.sh
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo ""
@@ -242,8 +264,51 @@ docker-staging-up: ## Start all services in staging mode
 docker-staging-down: ## Stop all staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
 
+docker-staging-down-volumes: ## Stop staging services and remove volumes (DELETES ALL DATA)
+	@echo "WARNING: This will delete ALL data in staging volumes!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read -r confirm
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
+	@echo "All staging data deleted"
+
+docker-staging-reset: ## Complete reset - stop, remove volumes, restart (DELETES ALL DATA)
+	@echo "WARNING: This will delete ALL data and restart staging!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read -r confirm
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+	@echo "Staging environment reset complete"
+
 docker-staging-logs: ## View logs from staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
+
+docker-staging-volumes: ## List volumes and their sizes
+	@echo "Current volumes:"
+	@docker volume ls --filter name=purpletab
+	@echo ""
+	@echo "Volume sizes:"
+	@docker system df -v | grep purpletab || echo "No purpletab volumes found"
+
+docker-staging-volume-inspect: ## Inspect volume contents and verify data persistence
+	@echo "Checking controller database..."
+	@docker run --rm -v purpletab_controller-data:/data alpine ls -lh /data/ || echo "No controller data found"
+	@echo ""
+	@echo "Checking scraper database..."
+	@docker run --rm -v purpletab_scraper-data:/data alpine ls -lh /data/ || echo "No scraper data found"
+	@echo ""
+	@echo "Checking scraper storage..."
+	@docker run --rm -v purpletab_scraper-storage:/data alpine ls -lh /data/ || echo "No scraper storage found"
+
+docker-staging-verify-mounts: ## Show actual volume mounts for running containers
+	@echo "Checking volume mounts for running containers..."
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml ps -q | xargs -I {} docker inspect {} --format='{{.Name}}: {{range .Mounts}}{{.Source}} -> {{.Destination}} {{end}}' 2>/dev/null || echo "No containers running"
+
+docker-staging-clean-volumes: ## Remove orphaned volumes (WARNING: removes old controller_* volumes)
+	@echo "WARNING: This will remove old orphaned volumes"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read -r confirm
+	@docker volume rm controller_controller-data 2>/dev/null || echo "No controller_controller-data volume to remove"
+	@echo "Orphaned volumes cleaned"
 
 docker-staging-pull: ## Pull latest images and start services (for server)
 	@./deploy-staging.sh
@@ -326,7 +391,7 @@ docker-volumes-inspect: ## Inspect volume usage
 docker-volumes-clean: ## Remove unused volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove unused Docker volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read -r confirm
 	@docker volume prune -f
 	@echo "Unused volumes removed!"
 
@@ -342,7 +407,7 @@ docker-prune: ## Remove unused containers, networks, and images
 docker-prune-all: ## Remove ALL unused Docker resources including volumes (WARNING: destructive)
 	@echo "⚠️  WARNING: This will remove ALL unused Docker resources including volumes!"
 	@echo "Press Ctrl+C to cancel, or Enter to continue..."
-	@read
+	@read -r confirm
 	@docker system prune -af --volumes
 	@echo "All unused Docker resources removed!"
 
