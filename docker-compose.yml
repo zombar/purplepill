@@ -42,6 +42,7 @@ services:
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
       # - OLLAMA_VISION_MODEL=gemma3.12b
+      # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
     volumes:
       - scraper-data:/app/data
       - scraper-storage:/app/storage
@@ -137,6 +138,7 @@ services:
       - PORT=8080
       - DB_PATH=/app/data/scheduler.db
       - CONTROLLER_DB_PATH=/app/controller-data/controller.db
+      - CONTROLLER_BASE_URL=http://controller:8080
       - SCRAPER_URL=http://scraper:8080
     volumes:
       - scheduler-data:/app/data

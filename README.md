@@ -78,7 +78,7 @@ Public Users & Search Engines:
 - **AI-Powered Scraping**: Extracts and cleans web content using Ollama AI models
 - **Comprehensive Text Analysis**: Sentiment analysis, readability scoring, named entity recognition
 - **Smart Link Scoring**: AI-based quality assessment for scraped URLs
-- **Tag-Based Search**: Fuzzy search across extracted content and metadata
+- **Tag-Based Search**: Exact tag matching across extracted content and metadata
 - **Asynchronous Processing**: Background scraping with real-time progress tracking
 
 ### SEO and Public Content
