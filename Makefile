@@ -49,6 +49,8 @@ help: ## Display this help message
 	@echo "  docker-staging-down    - Stop all staging services"
 	@echo "  docker-staging-logs    - View logs from staging services"
 	@echo ""
+	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
+	@echo ""
 	@echo "Docker service commands (per service):"
 	@echo "  docker-logs-<service>  - View logs for specific service (e.g., docker-logs-controller)"
 	@echo "  docker-restart-<service> - Restart specific service"

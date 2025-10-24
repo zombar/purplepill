@@ -1,22 +1,38 @@
 # Deployment Guide
 
-## Quick Start - GitHub Registry Workflow
+## Quick Start
 
-### 1. Build and Push (Dev Machine)
-
-```bash
-# Build all service images and push to GitHub Container Registry
-make docker-staging-push
-```
-
-### 2. Deploy (Staging Server)
+### Automated Deployment (Recommended)
 
 ```bash
-# Pull latest images and start services
+# Push to honker branch - CI automatically builds and pushes images
+git push origin honker
+
+# On staging server - pull and deploy
 make docker-staging-pull
 ```
 
-That's it! This pulls all 5 service images from ghcr.io/zombar and starts them.
+### Manual Deployment (Development)
+
+```bash
+# Dev machine - build and push
+make docker-staging-push
+
+# Staging server - pull and deploy
+make docker-staging-pull
+```
+
+## Deployment Modes
+
+**1. Automated CI/CD** (Production workflow)
+- Push to `honker` branch → GitHub Actions runs tests and builds images
+- No manual build needed
+- Consistent, tested images
+
+**2. Manual** (Development/testing)
+- Build locally with `make docker-staging-push`
+- Useful for testing before pushing to `honker`
+- Faster iteration during development
 
 ## Staging URL
 
@@ -204,6 +220,50 @@ To fix:
 
 The updated build script automatically creates multi-platform images that work on both ARM64 and AMD64.
 
-## Future: CI/CD Integration
+## CI/CD Workflow (Automated)
 
-This manual workflow is designed to be easily automated with GitHub Actions in the future. The build-staging.sh and deploy-staging.sh scripts can be called directly from CI pipelines.
+### Automatic Staging Deployment
+
+When you push to the `honker` branch, GitHub Actions automatically:
+1. Runs all tests (controller, scraper, textanalyzer, scheduler, web)
+2. Builds multi-platform images (linux/amd64, linux/arm64)
+3. Pushes images to `ghcr.io/zombar/purpletab-*:staging`
+
+**To trigger automatic deployment:**
+```bash
+# Make your changes
+git add .
+git commit -m "Your changes"
+git push origin honker
+```
+
+**Monitor the workflow:**
+- Go to: https://github.com/zombar/purpletab/actions
+- Look for "Staging Deploy" workflow
+- Images are automatically pushed to GitHub Container Registry after tests pass
+
+**On the staging server, pull the latest images:**
+```bash
+make docker-staging-pull
+```
+
+### Manual Deployment (Development)
+
+For testing during development, you can still manually build and push:
+
+```bash
+# Dev machine
+make docker-staging-push
+
+# Staging server
+make docker-staging-pull
+```
+
+### Workflow Details
+
+The `.github/workflows/staging-deploy.yml` workflow:
+- **Trigger**: Push to `honker` branch
+- **Tests**: All unit tests must pass
+- **Build**: Multi-platform images (ARM64 + AMD64)
+- **Push**: Authenticated with `GITHUB_TOKEN`
+- **Images**: `ghcr.io/zombar/purpletab-{textanalyzer,scraper,controller,scheduler,web}:staging`
