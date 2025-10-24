@@ -44,14 +44,17 @@ help: ## Display this help message
 	@echo "  docker-staging-deploy  - Full local deploy: build and start services"
 	@echo ""
 	@echo "Docker staging commands (server):"
-	@echo "  docker-staging-pull    - Pull latest images and start services"
-	@echo "  docker-staging-up      - Start services (without pulling)"
-	@echo "  docker-staging-down    - Stop all staging services"
-	@echo "  docker-staging-logs    - View logs from staging services"
+	@echo "  docker-staging-pull         - Pull latest images and start services"
+	@echo "  docker-staging-up           - Start services (without pulling)"
+	@echo "  docker-staging-down         - Stop all staging services"
+	@echo "  docker-staging-down-volumes - Stop and DELETE ALL DATA"
+	@echo "  docker-staging-reset        - Complete reset (stop, delete data, restart)"
+	@echo "  docker-staging-logs         - View logs from staging services"
 	@echo ""
 	@echo "Volume Management:"
 	@echo "  docker-staging-volumes        - List volumes and their sizes"
 	@echo "  docker-staging-volume-inspect - Inspect volume contents"
+	@echo "  docker-staging-verify-mounts  - Show actual mounts for running containers"
 	@echo "  docker-staging-clean-volumes  - Remove orphaned volumes"
 	@echo ""
 	@echo "Note: Pushing to 'honker' branch automatically builds and pushes staging images via CI"
@@ -247,6 +250,21 @@ docker-staging-up: ## Start all services in staging mode
 docker-staging-down: ## Stop all staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down
 
+docker-staging-down-volumes: ## Stop staging services and remove volumes (DELETES ALL DATA)
+	@echo "WARNING: This will delete ALL data in staging volumes!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
+	@echo "All staging data deleted"
+
+docker-staging-reset: ## Complete reset - stop, remove volumes, restart (DELETES ALL DATA)
+	@echo "WARNING: This will delete ALL data and restart staging!"
+	@echo "Press Ctrl+C to cancel, or Enter to continue..."
+	@read
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml down --volumes
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
+	@echo "Staging environment reset complete"
+
 docker-staging-logs: ## View logs from staging services
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml logs -f
 
@@ -266,6 +284,10 @@ docker-staging-volume-inspect: ## Inspect volume contents and verify data persis
 	@echo ""
 	@echo "Checking scraper storage..."
 	@docker run --rm -v purpletab_scraper-storage:/data alpine ls -lh /data/ || echo "No scraper storage found"
+
+docker-staging-verify-mounts: ## Show actual volume mounts for running containers
+	@echo "Checking volume mounts for running containers..."
+	@docker compose -f docker-compose.yml -f docker-compose.staging.yml ps -q | xargs -I {} docker inspect {} --format='{{.Name}}: {{range .Mounts}}{{.Source}} -> {{.Destination}} {{end}}' 2>/dev/null || echo "No containers running"
 
 docker-staging-clean-volumes: ## Remove orphaned volumes (WARNING: removes old controller_* volumes)
 	@echo "WARNING: This will remove old orphaned volumes"
