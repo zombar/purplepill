@@ -203,6 +203,7 @@ services:
       - tempo
     networks:
       - docutab-network
+      - proxy
 
   # Prometheus - Metrics collection and monitoring
   prometheus:
