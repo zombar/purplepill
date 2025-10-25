@@ -214,7 +214,7 @@ services:
         loki-url: "http://localhost:3100/loki/api/v1/push"
         loki-external-labels: "service=grafana,environment=staging"
     ports:
-      - "3000:3000"
+      - "3000"
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
@@ -246,7 +246,7 @@ services:
         loki-url: "http://localhost:3100/loki/api/v1/push"
         loki-external-labels: "service=prometheus,environment=staging"
     ports:
-      - "9091:9090"  # Use 9091 on host to avoid conflicts
+      - "9090"  # Use 9091 on host to avoid conflicts
     volumes:
       - ./config/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
