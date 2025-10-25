@@ -202,7 +202,7 @@ services:
     image: prom/prometheus:latest
     container_name: docutab-prometheus
     ports:
-      - "9090:9090"
+      - "9091:9090"  # Use 9091 on host to avoid conflicts
     volumes:
       - ./config/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
