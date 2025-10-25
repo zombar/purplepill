@@ -2,7 +2,7 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
   external_labels:
-    cluster: 'purpletab'
+    cluster: 'docutab'
     environment: 'development'
 
 scrape_configs:
@@ -12,7 +12,7 @@ scrape_configs:
       - targets: ['controller:8080']
         labels:
           service: 'controller'
-          app: 'purpletab'
+          app: 'docutab'
 
   # Scraper service
   - job_name: 'scraper'
@@ -20,7 +20,7 @@ scrape_configs:
       - targets: ['scraper:8080']
         labels:
           service: 'scraper'
-          app: 'purpletab'
+          app: 'docutab'
 
   # TextAnalyzer service
   - job_name: 'textanalyzer'
@@ -28,7 +28,7 @@ scrape_configs:
       - targets: ['textanalyzer:8080']
         labels:
           service: 'textanalyzer'
-          app: 'purpletab'
+          app: 'docutab'
 
   # Scheduler service
   - job_name: 'scheduler'
@@ -36,7 +36,7 @@ scrape_configs:
       - targets: ['scheduler:8080']
         labels:
           service: 'scheduler'
-          app: 'purpletab'
+          app: 'docutab'
 
   # Node exporter for Docker volume and system metrics
   - job_name: 'node-exporter'
@@ -44,7 +44,7 @@ scrape_configs:
       - targets: ['node-exporter:9100']
         labels:
           service: 'node-exporter'
-          app: 'purpletab'
+          app: 'docutab'
 
   # Prometheus self-monitoring
   - job_name: 'prometheus'
@@ -52,4 +52,4 @@ scrape_configs:
       - targets: ['localhost:9090']
         labels:
           service: 'prometheus'
-          app: 'purpletab'
+          app: 'docutab'

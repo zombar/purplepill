@@ -149,7 +149,7 @@ services:
         # Pass build-time arguments for Vite environment variables
         - VITE_PUBLIC_URL_BASE=http://localhost:9080
         - CONTROLLER_API_URL=http://controller:8080
-        - VITE_GRAFANA_URL=http://localhost:3000
+        - VITE_GRAFANA_URL=http://localhost:3000/grafana
     container_name: purpletab-web
     ports:
       - "3001:80"
