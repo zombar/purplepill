@@ -1,0 +1,55 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'purpletab'
+    environment: 'development'
+
+scrape_configs:
+  # Controller service
+  - job_name: 'controller'
+    static_configs:
+      - targets: ['controller:8080']
+        labels:
+          service: 'controller'
+          app: 'purpletab'
+
+  # Scraper service
+  - job_name: 'scraper'
+    static_configs:
+      - targets: ['scraper:8080']
+        labels:
+          service: 'scraper'
+          app: 'purpletab'
+
+  # TextAnalyzer service
+  - job_name: 'textanalyzer'
+    static_configs:
+      - targets: ['textanalyzer:8080']
+        labels:
+          service: 'textanalyzer'
+          app: 'purpletab'
+
+  # Scheduler service
+  - job_name: 'scheduler'
+    static_configs:
+      - targets: ['scheduler:8080']
+        labels:
+          service: 'scheduler'
+          app: 'purpletab'
+
+  # Node exporter for Docker volume and system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          service: 'node-exporter'
+          app: 'purpletab'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+          app: 'purpletab'

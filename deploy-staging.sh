@@ -1,10 +1,10 @@
 #!/bin/bash
 set -e
 
-# Server-side deployment script for PurpleTab staging
+# Server-side deployment script for DocuTab staging
 # Usage: ./deploy-staging.sh
 
-echo "🚀 Deploying PurpleTab to staging..."
+echo "🚀 Deploying DocuTab to staging..."
 echo ""
 
 # Pull latest images from GitHub Container Registry

@@ -1,17 +1,17 @@
-# Staging configuration for PurpleTab
+# Staging configuration for DocuTab
 # Assumes external reverse proxy (e.g., Caddy, Nginx, Traefik) handles:
 # - SSL/TLS termination
-# - Routing purpletab.honker subdomain to web container
+# - Routing docutab.honker subdomain to web container
 # - Load balancing if needed
 #
 # External proxy should route:
-#   purpletab.honker -> localhost:3001 (Web UI)
+#   docutab.honker -> localhost:3001 (Web UI)
 #
 # The web container's nginx then proxies /api/* to the controller service internally
 
 services:
   controller:
-    image: ghcr.io/zombar/purpletab-controller:staging
+    image: ghcr.io/zombar/docutab-controller:staging
     environment:
       # Service URLs (internal Docker network)
       - SCRAPER_BASE_URL=http://scraper:8080
@@ -19,8 +19,8 @@ services:
       - SCHEDULER_BASE_URL=http://scheduler:8080
 
       # External URLs
-      - WEB_INTERFACE_URL=https://purpletab.honker
-      - PUBLIC_URL_BASE=https://purpletab.honker
+      - WEB_INTERFACE_URL=https://docutab.honker
+      - PUBLIC_URL_BASE=https://docutab.honker
 
       # Database
       - DATABASE_PATH=/app/data/controller.db
@@ -30,6 +30,9 @@ services:
 
       # CORS disabled (same-origin requests via nginx proxy)
       - CORS_ORIGINS=
+
+      # Observability
+      - TEMPO_ENDPOINT=tempo:4317
 
       # Port
       - CONTROLLER_PORT=8080
@@ -45,11 +48,11 @@ services:
       start_period: 40s
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
   scraper:
-    image: ghcr.io/zombar/purpletab-scraper:staging
+    image: ghcr.io/zombar/docutab-scraper:staging
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -60,6 +63,9 @@ services:
       - DATABASE_PATH=/app/data/scraper.db
       - STORAGE_PATH=/app/storage
 
+      # Observability
+      - TEMPO_ENDPOINT=tempo:4317
+
       # Port
       - SCRAPER_PORT=8080
     ports:
@@ -69,11 +75,11 @@ services:
       - scraper-storage:/app/storage
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
   textanalyzer:
-    image: ghcr.io/zombar/purpletab-textanalyzer:staging
+    image: ghcr.io/zombar/docutab-textanalyzer:staging
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -83,6 +89,9 @@ services:
       # Database
       - DATABASE_PATH=/data/textanalyzer.db
 
+      # Observability
+      - TEMPO_ENDPOINT=tempo:4317
+
       # Port
       - TEXTANALYZER_PORT=8080
     ports:
@@ -91,17 +100,20 @@ services:
       - textanalyzer-data:/data
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
   scheduler:
-    image: ghcr.io/zombar/purpletab-scheduler:staging
+    image: ghcr.io/zombar/docutab-scheduler:staging
     environment:
       # Controller URL (internal)
       - CONTROLLER_BASE_URL=http://controller:8080
 
       # Database
       - DATABASE_PATH=/app/data/scheduler.db
+
+      # Observability
+      - TEMPO_ENDPOINT=tempo:4317
 
       # Port
       - SCHEDULER_PORT=8080
@@ -115,10 +127,10 @@ services:
       - scheduler-data:/app/data
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
 
   web:
-    image: ghcr.io/zombar/purpletab-web:staging
+    image: ghcr.io/zombar/docutab-web:staging
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80
@@ -129,14 +141,127 @@ services:
       controller:
         condition: service_healthy
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
-# Use the same networks and volumes from base docker-compose.yml
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: docutab-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+      - ./config/loki-config.yaml:/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - docutab-network
+
+  # Tempo - Distributed tracing
+  tempo:
+    image: grafana/tempo:latest
+    container_name: docutab-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    ports:
+      - "3200:3200"   # Tempo
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - tempo-data:/var/tempo
+      - ./config/tempo-config.yaml:/etc/tempo.yaml
+    restart: unless-stopped
+    networks:
+      - docutab-network
+
+  # Grafana - Observability dashboard
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: docutab-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - tempo
+    networks:
+      - docutab-network
+
+  # Prometheus - Metrics collection and monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: docutab-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - docutab-network
+    depends_on:
+      - loki
+
+  # Node Exporter - System and Docker volume metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: docutab-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
+    networks:
+      - docutab-network
+
+# Networks and volumes for staging
 networks:
-  purpletab-network:
+  docutab-network:
     driver: bridge
   proxy:
     external: true
 
-# Volumes are inherited from docker-compose.yml - no need to redefine
+volumes:
+  controller-data:
+    driver: local
+  scraper-data:
+    driver: local
+  scraper-storage:
+    driver: local
+  textanalyzer-data:
+    driver: local
+  scheduler-data:
+    driver: local
+  loki-data:
+    driver: local
+  tempo-data:
+    driver: local
+  grafana-data:
+    driver: local
+  prometheus-data:
+    driver: local

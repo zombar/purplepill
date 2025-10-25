@@ -3,8 +3,8 @@ services:
   textanalyzer:
     image: purpletab-textanalyzer:latest
     build:
-      context: ./apps/textanalyzer
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/textanalyzer/Dockerfile
     container_name: purpletab-textanalyzer
     ports:
       - "9082:8080"
@@ -14,9 +14,19 @@ services:
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
+      - TEMPO_ENDPOINT=tempo:4317
     volumes:
       - textanalyzer-data:/data
     restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "2"
+        loki-max-backoff: "800ms"
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -25,13 +35,16 @@ services:
       start_period: 10s
     networks:
       - purpletab-network
+    depends_on:
+      - loki
+      - tempo
 
   # Scraper Service
   scraper:
     image: purpletab-scraper:latest
     build:
-      context: ./apps/scraper
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/scraper/Dockerfile
     container_name: purpletab-scraper
     ports:
       - "9081:8080"
@@ -41,6 +54,7 @@ services:
       - STORAGE_BASE_PATH=/app/storage
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
+      - TEMPO_ENDPOINT=tempo:4317
       # - OLLAMA_VISION_MODEL=gemma3.12b
       # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
     volumes:
@@ -50,6 +64,15 @@ services:
       "./scraper-api",
     ]
     restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "2"
+        loki-max-backoff: "800ms"
+        max-size: "10m"
+        max-file: "3"
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -58,13 +81,16 @@ services:
       start_period: 15s
     networks:
       - purpletab-network
+    depends_on:
+      - loki
+      - tempo
 
   # Controller Service
   controller:
     image: purpletab-controller:latest
     build:
-      context: ./apps/controller
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/controller/Dockerfile
     container_name: purpletab-controller
     ports:
       - "9080:8080"
@@ -80,14 +106,29 @@ services:
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
       - WEB_INTERFACE_URL=http://web:3001
+      # Tracing
+      - TEMPO_ENDPOINT=tempo:4317
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "2"
+        loki-max-backoff: "800ms"
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       scraper:
         condition: service_healthy
       textanalyzer:
         condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
@@ -102,8 +143,8 @@ services:
   web:
     image: purpletab-web:latest
     build:
-      context: ./apps/web
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/web/Dockerfile
       args:
         # Pass build-time arguments for Vite environment variables
         - VITE_PUBLIC_URL_BASE=http://localhost:9080
@@ -112,9 +153,20 @@ services:
     ports:
       - "3001:80"
     restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "2"
+        loki-max-backoff: "800ms"
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       controller:
         condition: service_healthy
+      loki:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
       interval: 30s
@@ -129,8 +181,8 @@ services:
   scheduler:
     image: purpletab-scheduler:latest
     build:
-      context: ./apps/scheduler
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: apps/scheduler/Dockerfile
     container_name: purpletab-scheduler
     ports:
       - "9083:8080"
@@ -140,21 +192,134 @@ services:
       - CONTROLLER_DB_PATH=/app/controller-data/controller.db
       - CONTROLLER_BASE_URL=http://controller:8080
       - SCRAPER_URL=http://scraper:8080
+      - TEMPO_ENDPOINT=tempo:4317
     volumes:
       - scheduler-data:/app/data
       - controller-data:/app/controller-data:ro
     restart: unless-stopped
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-batch-size: "400"
+        loki-retries: "2"
+        loki-max-backoff: "800ms"
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       controller:
         condition: service_healthy
       scraper:
         condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 3s
       retries: 3
       start_period: 5s
+    networks:
+      - purpletab-network
+
+  # Loki - Log aggregation
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: purpletab-loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+      - ./config/loki-config.yaml:/etc/loki/local-config.yaml
+    restart: unless-stopped
+    networks:
+      - purpletab-network
+
+  # Tempo - Distributed tracing
+  tempo:
+    image: grafana/tempo:latest
+    container_name: purpletab-tempo
+    command: [ "-config.file=/etc/tempo.yaml" ]
+    ports:
+      - "3200:3200"   # Tempo
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+    volumes:
+      - tempo-data:/var/tempo
+      - ./config/tempo-config.yaml:/etc/tempo.yaml
+    restart: unless-stopped
+    networks:
+      - purpletab-network
+
+  # Grafana - Observability dashboard
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: purpletab-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_AUTH_DISABLE_LOGIN_FORM=true
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - tempo
+    networks:
+      - purpletab-network
+
+  # Prometheus - Metrics collection and monitoring
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: purpletab-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus:/etc/prometheus
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - purpletab-network
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+    depends_on:
+      - loki
+
+  # Node Exporter - System and Docker volume metrics
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: purpletab-node-exporter
+    ports:
+      - "9100:9100"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
     networks:
       - purpletab-network
 
@@ -168,6 +333,14 @@ volumes:
   textanalyzer-data:
     driver: local
   scheduler-data:
+    driver: local
+  loki-data:
+    driver: local
+  tempo-data:
+    driver: local
+  grafana-data:
+    driver: local
+  prometheus-data:
     driver: local
 
 networks:

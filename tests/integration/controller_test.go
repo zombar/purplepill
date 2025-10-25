@@ -124,6 +124,10 @@ func TestControllerIntegration(t *testing.T) {
 	t.Run("SEOWorkflow", func(t *testing.T) {
 		testSEOWorkflow(t, ollamaAvailable)
 	})
+
+	t.Run("ImageUploadAndOCR", func(t *testing.T) {
+		testImageUploadAndOCR(t, ollamaAvailable)
+	})
 }
 
 // testDirectTextAnalysis tests POST /analyze endpoint
@@ -1467,6 +1471,107 @@ func testSEOWorkflow(t *testing.T, ollamaAvailable bool) {
 	}
 
 	t.Log("✓ SEO workflow test completed successfully")
+}
+
+// testImageUploadAndOCR tests POST /process-image endpoint
+func testImageUploadAndOCR(t *testing.T, ollamaAvailable bool) {
+	t.Skip("Skipping image upload test - /api/process-image endpoint not yet implemented")
+
+	if !ollamaAvailable {
+		t.Skip("Skipping image upload test - Ollama is required for OCR")
+	}
+
+	// Create a simple test image (1x1 PNG with text-like content)
+	// This is a minimal PNG file with text "Test"
+	imageData := []byte{
+		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+		0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+		0x54, 0x08, 0xD7, 0x63, 0xF8, 0xFF, 0xFF, 0x3F,
+		0x00, 0x05, 0xFE, 0x02, 0xFE, 0xDC, 0xCC, 0x59,
+		0xE7, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+		0x44, 0xAE, 0x42, 0x60, 0x82,
+	}
+
+	// Create multipart form with image
+	body := &bytes.Buffer{}
+
+	// Create a simple multipart request manually
+	boundary := "----WebKitFormBoundary7MA4YWxkTrZu0gW"
+	body.WriteString("--" + boundary + "\r\n")
+	body.WriteString("Content-Disposition: form-data; name=\"image\"; filename=\"test.png\"\r\n")
+	body.WriteString("Content-Type: image/png\r\n\r\n")
+	body.Write(imageData)
+	body.WriteString("\r\n--" + boundary + "--\r\n")
+
+	req, err := http.NewRequest("POST", controllerURL+"/api/process-image", body)
+	if err != nil {
+		t.Fatalf("Failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "multipart/form-data; boundary="+boundary)
+
+	client := &http.Client{Timeout: 5 * time.Minute} // OCR can take time
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Request failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		t.Fatalf("Expected status 200, got %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatalf("Failed to decode response: %v", err)
+	}
+
+	// Verify required fields are present
+	assertFieldExists(t, result, "id")
+	assertFieldExists(t, result, "created_at")
+	assertFieldExists(t, result, "source_type")
+	assertFieldExists(t, result, "scraper_uuid")
+	assertFieldExists(t, result, "textanalyzer_uuid")
+	assertFieldExists(t, result, "tags")
+	assertFieldExists(t, result, "metadata")
+
+	// Verify source type is image_upload
+	if result["source_type"] != "image_upload" {
+		t.Errorf("Expected source_type 'image_upload', got '%v'", result["source_type"])
+	}
+
+	// Verify metadata contains image-related fields
+	metadata, ok := result["metadata"].(map[string]interface{})
+	if !ok {
+		t.Fatal("metadata is not a map")
+	}
+
+	assertFieldExists(t, metadata, "title")
+	assertFieldExists(t, metadata, "image_id")
+	assertFieldExists(t, metadata, "image_summary")
+
+	// extracted_text might be empty for a simple 1x1 image, so we just check it exists
+	if _, exists := metadata["extracted_text"]; !exists {
+		t.Error("Expected 'extracted_text' field in metadata")
+	}
+
+	// Verify tags array is populated (should have both image and text analysis tags)
+	tags, ok := result["tags"].([]interface{})
+	if !ok {
+		t.Fatal("tags is not an array")
+	}
+
+	t.Logf("Image upload created document with %d tags", len(tags))
+
+	// Verify the document has a scraper_uuid (the image ID)
+	if result["scraper_uuid"] == nil {
+		t.Error("Expected scraper_uuid to be set (should be the image ID)")
+	}
+
+	t.Logf("✓ Image upload and OCR processing completed successfully (document ID: %v)", result["id"])
 }
 
 // Helper function to assert a field exists in a map
