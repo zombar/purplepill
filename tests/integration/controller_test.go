@@ -1495,7 +1495,6 @@ func testImageUploadAndOCR(t *testing.T, ollamaAvailable bool) {
 
 	// Create multipart form with image
 	body := &bytes.Buffer{}
-	writer := http.NewRequest("POST", controllerURL+"/api/process-image", body)
 
 	// Create a simple multipart request manually
 	boundary := "----WebKitFormBoundary7MA4YWxkTrZu0gW"
