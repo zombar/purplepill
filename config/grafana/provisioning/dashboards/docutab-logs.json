@@ -36,7 +36,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=~\"docutab.*\"}",
+          "expr": "{environment=\"staging\"}",
           "refId": "A"
         }
       ],
@@ -71,7 +71,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=\"docutab-controller\"} | json | level=\"error\"",
+          "expr": "{service=\"controller\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -106,7 +106,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=\"docutab-scraper\"} | json | level=\"error\"",
+          "expr": "{service=\"scraper\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -141,7 +141,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=\"docutab-textanalyzer\"} | json | level=\"error\"",
+          "expr": "{service=\"textanalyzer\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -176,7 +176,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=\"docutab-scheduler\"} | json | level=\"error\"",
+          "expr": "{service=\"scheduler\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -262,7 +262,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({container_name=~\"docutab.*\"} | json | level=\"error\" [5m])) by (container_name)",
+          "expr": "sum(count_over_time({environment=\"staging\"} | json | level=\"error\" [5m])) by (service)",
           "refId": "A"
         }
       ],
