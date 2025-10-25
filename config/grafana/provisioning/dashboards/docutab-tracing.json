@@ -534,7 +534,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "purpletab",
+    "docutab",
     "tracing",
     "tempo"
   ],
@@ -547,8 +547,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "PurpleTab Distributed Tracing",
-  "uid": "purpletab-tracing",
+  "title": "docutab Distributed Tracing",
+  "uid": "docutab-tracing",
   "version": 1,
   "weekStart": ""
 }
