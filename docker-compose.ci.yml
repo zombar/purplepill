@@ -1,0 +1,58 @@
+# CI override for docker-compose.yml
+# This removes Loki logging driver dependencies for CI environments where
+# the Loki Docker plugin is not available.
+#
+# In CI environments (GitHub Actions), the Loki logging plugin needs to be
+# installed separately. Instead of installing the plugin, we use the default
+# json-file driver which is available everywhere.
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml build
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.ci.yml down -v
+#
+# For local development, continue using:
+#   docker compose up -d
+
+services:
+  textanalyzer:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  scraper:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  controller:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  web:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  scheduler:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  prometheus:
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
