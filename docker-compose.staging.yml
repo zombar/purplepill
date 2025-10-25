@@ -12,6 +12,7 @@
 services:
   controller:
     image: ghcr.io/zombar/docutab-controller:staging
+    container_name: docutab-controller
     environment:
       # Service URLs (internal Docker network)
       - SCRAPER_BASE_URL=http://scraper:8080
@@ -53,6 +54,7 @@ services:
 
   scraper:
     image: ghcr.io/zombar/docutab-scraper:staging
+    container_name: docutab-scraper
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -80,6 +82,7 @@ services:
 
   textanalyzer:
     image: ghcr.io/zombar/docutab-textanalyzer:staging
+    container_name: docutab-textanalyzer
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -105,6 +108,7 @@ services:
 
   scheduler:
     image: ghcr.io/zombar/docutab-scheduler:staging
+    container_name: docutab-scheduler
     environment:
       # Controller URL (internal)
       - CONTROLLER_BASE_URL=http://controller:8080
@@ -131,6 +135,7 @@ services:
 
   web:
     image: ghcr.io/zombar/docutab-web:staging
+    container_name: docutab-web
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80
