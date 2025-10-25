@@ -49,7 +49,7 @@ if [ "$PUSH" = "push" ]; then
                 --platform linux/amd64,linux/arm64 \
                 --build-arg VITE_PUBLIC_URL_BASE= \
                 --build-arg VITE_CONTROLLER_API_URL= \
-                --build-arg VITE_GRAFANA_URL=http://docutab.honker:3000 \
+                --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
                 -t $REGISTRY/docutab-$service:staging \
                 -f $dockerfile \
                 . \
@@ -80,7 +80,7 @@ else
             docker buildx build \
                 --build-arg VITE_PUBLIC_URL_BASE= \
                 --build-arg VITE_CONTROLLER_API_URL= \
-                --build-arg VITE_GRAFANA_URL=http://docutab.honker:3000 \
+                --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
                 -t docutab-$service:staging \
                 -f $dockerfile \
                 . \
