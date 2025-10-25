@@ -136,6 +136,12 @@ The services will be available at:
 - TextAnalyzer: http://localhost:9082
 - Scheduler: http://localhost:9083
 
+Observability stack:
+- Grafana: http://localhost:3000
+- Prometheus: http://localhost:9090
+- Tempo: http://localhost:3200
+- Loki: http://localhost:3100
+
 ### Local Development
 
 ```bash
@@ -195,6 +201,65 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 
 **Web:**
 - `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:9080)
+
+## Observability
+
+PurpleTab includes comprehensive observability through Prometheus, Grafana, Tempo (tracing), and Loki (logging):
+
+### Monitoring Stack
+- **Prometheus** (http://localhost:9090) - Metrics collection and querying
+- **Grafana** (http://localhost:3000) - Visualization dashboards
+- **Tempo** (http://localhost:3200) - Distributed tracing
+- **Loki** (http://localhost:3100) - Log aggregation
+
+### Metrics Collected
+All services expose `/metrics` endpoints with:
+- **HTTP metrics**: Request duration, total requests, active requests by method/path/status
+- **Database metrics**: Query duration, connection pool stats (open/idle connections)
+- **System metrics**: CPU, memory, disk usage via node-exporter
+
+### Pre-built Dashboards
+- **PurpleTab Backend Metrics** - Complete backend observability at http://localhost:3000/d/purpletab-backend
+  - HTTP request rates and latency percentiles (p50, p95, p99)
+  - Database connection pools and query performance
+  - HTTP status code distribution
+  - Service health indicators
+  - System resource usage (CPU, memory)
+  - Real-time service logs (Loki)
+
+- **PurpleTab Distributed Tracing** - Request tracing and performance at http://localhost:3000/d/purpletab-tracing
+  - Recent traces visualization
+  - Request rate by HTTP method
+  - Request duration by service (p50, p95, p99)
+  - Trace rate by service
+  - Error rate tracking
+  - Interactive trace search
+
+- **PurpleTab Service Logs** - Centralized log viewer at http://localhost:3000/d/purpletab-logs
+  - Aggregated logs from all services
+  - Log level filtering
+  - Service-specific log streams
+
+### Quick Access
+```bash
+# View service metrics directly
+curl http://localhost:9080/metrics  # Controller
+curl http://localhost:9081/metrics  # Scraper
+curl http://localhost:9082/metrics  # TextAnalyzer
+curl http://localhost:9083/metrics  # Scheduler
+
+# Query metrics via Prometheus
+curl 'http://localhost:9090/api/v1/query?query=http_requests_total'
+
+# Open Grafana dashboards
+open http://localhost:3000/d/purpletab-backend    # Backend metrics
+open http://localhost:3000/d/purpletab-tracing    # Distributed tracing
+open http://localhost:3000/d/purpletab-logs       # Service logs
+```
+
+**Additional Resources:**
+- [Logging Configuration](README-LOGGING.md) - Loki logging setup and querying
+- [Frontend Monitoring Guide](docs/FRONTEND-MONITORING.md) - Methods for collecting and displaying frontend metrics
 
 ## Service Documentation
 
@@ -410,7 +475,7 @@ Run `make test` for unit tests, `make test-integration` for integration tests, o
 
 - **Database**: Migrate to PostgreSQL for multi-instance deployments
 - **Service Discovery**: Use environment variables or service mesh
-- **Monitoring**: Add structured logging and metrics collection
+- **Observability**: Prometheus metrics and Grafana dashboards are included; configure alerting for production
 - **Security**: Implement authentication, rate limiting, and HTTPS
 - **Scaling**: Deploy services independently based on load
 
