@@ -16,7 +16,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=controller,environment=staging"
     environment:
       # Service URLs (internal Docker network)
@@ -63,7 +63,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=scraper,environment=staging"
     environment:
       # Ollama configuration
@@ -96,7 +96,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=textanalyzer,environment=staging"
     environment:
       # Ollama configuration
@@ -127,7 +127,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=scheduler,environment=staging"
     environment:
       # Controller URL (internal)
@@ -159,7 +159,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=web,environment=staging"
     environment:
       # Runtime nginx config (if needed)
@@ -211,7 +211,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=grafana,environment=staging"
     ports:
       - "3000"
@@ -243,7 +243,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=prometheus,environment=staging"
     ports:
       - "9090"  # Use 9091 on host to avoid conflicts
@@ -270,7 +270,7 @@ services:
     logging:
       driver: loki
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-url: "http://loki:3100/loki/api/v1/push"
         loki-external-labels: "service=node-exporter,environment=staging"
     ports:
       - "9100:9100"
