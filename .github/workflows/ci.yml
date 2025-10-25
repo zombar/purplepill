@@ -177,6 +177,14 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Run Timeline regression tests
+        run: |
+          echo "Running Timeline selection stability tests..."
+          npm test -- Timeline.selectionStability.test.jsx --run
+          echo "Running Timeline regression suite..."
+          npm test -- Timeline.regressionSuite.test.jsx --run
+          echo "✅ All Timeline regression tests passed!"
+
   # Summary job that requires all unit tests to pass
   # Note: Integration tests run in a separate workflow (integration-tests.yml)
   ci-success:

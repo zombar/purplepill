@@ -13,6 +13,11 @@ services:
   controller:
     image: ghcr.io/zombar/docutab-controller:staging
     container_name: docutab-controller
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=controller,environment=staging"
     environment:
       # Service URLs (internal Docker network)
       - SCRAPER_BASE_URL=http://scraper:8080
@@ -55,6 +60,11 @@ services:
   scraper:
     image: ghcr.io/zombar/docutab-scraper:staging
     container_name: docutab-scraper
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=scraper,environment=staging"
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -83,6 +93,11 @@ services:
   textanalyzer:
     image: ghcr.io/zombar/docutab-textanalyzer:staging
     container_name: docutab-textanalyzer
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=textanalyzer,environment=staging"
     environment:
       # Ollama configuration
       - USE_OLLAMA=true
@@ -109,6 +124,11 @@ services:
   scheduler:
     image: ghcr.io/zombar/docutab-scheduler:staging
     container_name: docutab-scheduler
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=scheduler,environment=staging"
     environment:
       # Controller URL (internal)
       - CONTROLLER_BASE_URL=http://controller:8080
@@ -136,6 +156,11 @@ services:
   web:
     image: ghcr.io/zombar/docutab-web:staging
     container_name: docutab-web
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=web,environment=staging"
     environment:
       # Runtime nginx config (if needed)
       - NGINX_PORT=80
@@ -183,6 +208,11 @@ services:
   grafana:
     image: grafana/grafana:11.0.0
     container_name: docutab-grafana
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=grafana,environment=staging"
     ports:
       - "3000:3000"
     environment:
@@ -194,6 +224,7 @@ services:
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=https://docutab.honker/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
+      - GF_SERVER_LANDING_PAGE=/grafana/dashboards
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
@@ -209,6 +240,11 @@ services:
   prometheus:
     image: prom/prometheus:latest
     container_name: docutab-prometheus
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=prometheus,environment=staging"
     ports:
       - "9091:9090"  # Use 9091 on host to avoid conflicts
     volumes:
@@ -231,6 +267,11 @@ services:
   node-exporter:
     image: prom/node-exporter:latest
     container_name: docutab-node-exporter
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        loki-external-labels: "service=node-exporter,environment=staging"
     ports:
       - "9100:9100"
     volumes:
