@@ -47,7 +47,7 @@ if [ "$PUSH" = "push" ]; then
             # Web service needs build args
             docker buildx build \
                 --platform linux/amd64,linux/arm64 \
-                --build-arg VITE_PUBLIC_URL_BASE= \
+                --build-arg VITE_PUBLIC_URL_BASE=https://docutab.honker \
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
                 -t $REGISTRY/docutab-$service:staging \
@@ -78,7 +78,7 @@ else
         if [ "$service" = "web" ]; then
             # Web service needs build args
             docker buildx build \
-                --build-arg VITE_PUBLIC_URL_BASE= \
+                --build-arg VITE_PUBLIC_URL_BASE=https://docutab.honker \
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
                 -t docutab-$service:staging \
