@@ -71,7 +71,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"controller\"} | json | level=\"error\"",
+          "expr": "{service=\"controller\"} |~ \"(?i)error\"",
           "refId": "A"
         }
       ],
@@ -106,7 +106,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"scraper\"} | json | level=\"error\"",
+          "expr": "{service=\"scraper\"} |~ \"(?i)error\"",
           "refId": "A"
         }
       ],
@@ -141,7 +141,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"textanalyzer\"} | json | level=\"error\"",
+          "expr": "{service=\"textanalyzer\"} |~ \"(?i)error\"",
           "refId": "A"
         }
       ],
@@ -176,7 +176,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"scheduler\"} | json | level=\"error\"",
+          "expr": "{service=\"scheduler\"} |~ \"(?i)error\"",
           "refId": "A"
         }
       ],
@@ -262,7 +262,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({environment=\"staging\"} | json | level=\"error\" [5m])) by (service)",
+          "expr": "sum(count_over_time({environment=\"staging\"} |~ \"(?i)error\" [5m])) by (service)",
           "refId": "A"
         }
       ],
