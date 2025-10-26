@@ -17,6 +17,8 @@ services:
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
+      - REDIS_ADDR=redis:6379
+      - WORKER_CONCURRENCY=5
       - TEMPO_ENDPOINT=tempo:4317
     volumes:
       - textanalyzer-data:/data
@@ -35,8 +37,12 @@ services:
     networks:
       - docutab-network
     depends_on:
-      - loki
-      - tempo
+      redis:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
 
   # Scraper Service
   scraper:
@@ -171,7 +177,7 @@ services:
       loki:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
       interval: 30s
       timeout: 3s
       retries: 3
@@ -261,6 +267,63 @@ services:
     networks:
       - docutab-network
 
+  # PostgreSQL - Primary database for all services
+  postgres:
+    image: postgres:16-alpine
+    container_name: docutab-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=docutab
+      - POSTGRES_USER=docutab
+      - POSTGRES_PASSWORD=docutab_dev_pass
+      - PGDATA=/var/lib/postgresql/data/pgdata
+      # Use dev.conf by default; override with staging.conf in production
+      - POSTGRES_CONFIG_FILE=/etc/postgresql/dev.conf
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - postgres-logs:/var/log/postgresql
+      - ./config/postgres/dev.conf:/etc/postgresql/dev.conf:ro
+      - ./config/postgres/staging.conf:/etc/postgresql/staging.conf:ro
+    command: postgres -c config_file=/etc/postgresql/dev.conf
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U docutab -d docutab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - docutab-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # PostgreSQL Exporter - Export PostgreSQL metrics to Prometheus
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: docutab-postgres-exporter
+    ports:
+      - "9187:9187"
+    environment:
+      - DATA_SOURCE_NAME=postgresql://docutab:docutab_dev_pass@postgres:5432/docutab?sslmode=disable
+      - PG_EXPORTER_EXTEND_QUERY_PATH=/etc/postgres_exporter/queries.yaml
+    volumes:
+      - ./config/postgres/exporter-queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - docutab-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   # Loki - Log aggregation
   loki:
     image: grafana/loki:3.0.0
@@ -283,10 +346,12 @@ services:
       - ./config/promtail:/etc/promtail
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - postgres-logs:/var/log/postgresql:ro
     command: -config.file=/etc/promtail/promtail-config-dev.yaml
     restart: unless-stopped
     depends_on:
       - loki
+      - postgres
     networks:
       - docutab-network
 
@@ -388,6 +453,10 @@ volumes:
   scheduler-data:
     driver: local
   redis-data:
+    driver: local
+  postgres-data:
+    driver: local
+  postgres-logs:
     driver: local
   loki-data:
     driver: local
