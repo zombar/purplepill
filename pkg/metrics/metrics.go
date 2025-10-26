@@ -309,6 +309,9 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 		prometheus.CounterOpts{
 			Name: "http_requests_total",
 			Help: "Total number of HTTP requests",
+			ConstLabels: prometheus.Labels{
+				"app": "docutab",
+			},
 		},
 		[]string{"service", "method", "path", "status"},
 	)
@@ -318,6 +321,9 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 			Name:    "http_request_duration_seconds",
 			Help:    "HTTP request duration in seconds",
 			Buckets: prometheus.DefBuckets,
+			ConstLabels: prometheus.Labels{
+				"app": "docutab",
+			},
 		},
 		[]string{"service", "method", "path", "status"},
 	)
@@ -327,6 +333,9 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 			Name:    "http_request_size_bytes",
 			Help:    "HTTP request size in bytes",
 			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+			ConstLabels: prometheus.Labels{
+				"app": "docutab",
+			},
 		},
 		[]string{"service", "method", "path"},
 	)
@@ -336,6 +345,9 @@ func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
 			Name:    "http_response_size_bytes",
 			Help:    "HTTP response size in bytes",
 			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
+			ConstLabels: prometheus.Labels{
+				"app": "docutab",
+			},
 		},
 		[]string{"service", "method", "path"},
 	)
