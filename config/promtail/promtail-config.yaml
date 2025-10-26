@@ -14,11 +14,14 @@ scrape_configs:
     docker_sd_configs:
       - host: unix:///var/run/docker.sock
         refresh_interval: 5s
-        filters:
-          - name: label
-            values: ["com.docker.compose.project=purpletab"]
+        # No filters - scrape all containers, then filter by relabel_configs
 
     relabel_configs:
+      # Only scrape containers with names starting with 'docutab-'
+      - source_labels: ['__meta_docker_container_name']
+        regex: '/docutab-.*'
+        action: keep
+
       # Use container name as the main identifier
       - source_labels: ['__meta_docker_container_name']
         target_label: 'container_name'
