@@ -9,13 +9,18 @@ A microservices-based web content processing platform built in Go. The system sc
 
 ## Architecture
 
-PurpleTab consists of five services that work together:
+PurpleTab consists of multiple services that work together:
 
+**Core Services:**
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models. Stores files in filesystem with SEO-friendly slugs
 - **TextAnalyzer** - Performs text analysis including sentiment analysis, readability scoring, named entity recognition, and AI-powered content detection
 - **Controller** - Orchestrates the scraper and text analyzer services, providing a unified API, asynchronous scrape request tracking, tag-based search, and SEO-optimized content serving
 - **Scheduler** - Manages scheduled tasks for automated scraping and database maintenance using cron expressions
 - **Web** - React-based web interface for content ingestion with real-time progress tracking, search, and viewing
+
+**Infrastructure Services:**
+- **Redis** - Message broker and persistence layer for the Asynq task queue system
+- **Asynqmon** - Web UI for monitoring queue status, task metrics, and worker health
 
 ### Two-Audience Architecture
 
@@ -79,7 +84,9 @@ Public Users & Search Engines:
 - **Comprehensive Text Analysis**: Sentiment analysis, readability scoring, named entity recognition
 - **Smart Link Scoring**: AI-based quality assessment for scraped URLs
 - **Tag-Based Search**: Exact tag matching across extracted content and metadata
-- **Asynchronous Processing**: Background scraping with real-time progress tracking
+- **Persistent Task Queue**: Asynq + Redis for reliable async processing with database persistence
+- **Worker Concurrency**: Configurable parallel processing with automatic retry and exponential backoff
+- **Queue Monitoring**: Real-time metrics and task inspection via Asynqmon dashboard
 
 ### SEO and Public Content
 - **SEO-Friendly URLs**: Automatic slug generation from content titles for clean, readable URLs
@@ -97,6 +104,7 @@ The Controller service provides public-facing endpoints for serving SEO-optimize
 - Docker and Docker Compose (for containerized deployment)
 - [Ollama](https://ollama.ai) (for AI-powered features)
 - GCC (required for SQLite CGO compilation)
+- **Note**: On Apple Silicon (ARM64), Asynqmon runs with x86_64 emulation via Docker (no native ARM64 build available)
 
 ### Ollama Setup
 
@@ -135,6 +143,8 @@ The services will be available at:
 - Scraper: http://localhost:9081
 - TextAnalyzer: http://localhost:9082
 - Scheduler: http://localhost:9083
+- **Asynqmon (Queue UI): http://localhost:9084**
+- **Redis: localhost:6379**
 
 Observability stack:
 - Grafana: http://localhost:3000
@@ -183,7 +193,11 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 **Controller:**
 - `SCRAPER_BASE_URL` - Scraper service URL (default: http://scraper:8080)
 - `TEXTANALYZER_BASE_URL` - TextAnalyzer service URL (default: http://textanalyzer:8080)
+- `SCHEDULER_BASE_URL` - Scheduler service URL (default: http://scheduler:8080)
 - `DATABASE_PATH` - SQLite database path
+- **`REDIS_ADDR` - Redis server address for task queue (default: redis:6379)**
+- **`WORKER_CONCURRENCY` - Number of concurrent queue workers (default: 10)**
+- `LINK_SCORE_THRESHOLD` - Minimum URL quality score 0.0-1.0 (default: 0.5)
 
 **Scraper:**
 - `PORT` - HTTP server port

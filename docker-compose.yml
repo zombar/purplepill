@@ -1,11 +1,14 @@
 services:
   # Text Analyzer Service
   textanalyzer:
-    image: purpletab-textanalyzer:latest
+    image: docutab-textanalyzer:latest
     build:
       context: .
       dockerfile: apps/textanalyzer/Dockerfile
-    container_name: purpletab-textanalyzer
+    container_name: docutab-textanalyzer
+    labels:
+      app: docutab
+      app.type: backend
     ports:
       - "9082:8080"
     environment:
@@ -19,12 +22,8 @@ services:
       - textanalyzer-data:/data
     restart: unless-stopped
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "2"
-        loki-max-backoff: "800ms"
         max-size: "10m"
         max-file: "3"
     healthcheck:
@@ -34,18 +33,21 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - purpletab-network
+      - docutab-network
     depends_on:
       - loki
       - tempo
 
   # Scraper Service
   scraper:
-    image: purpletab-scraper:latest
+    image: docutab-scraper:latest
     build:
       context: .
       dockerfile: apps/scraper/Dockerfile
-    container_name: purpletab-scraper
+    container_name: docutab-scraper
+    labels:
+      app: docutab
+      app.type: backend
     ports:
       - "9081:8080"
     environment:
@@ -65,12 +67,8 @@ services:
     ]
     restart: unless-stopped
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "2"
-        loki-max-backoff: "800ms"
         max-size: "10m"
         max-file: "3"
     healthcheck:
@@ -80,18 +78,21 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - purpletab-network
+      - docutab-network
     depends_on:
       - loki
       - tempo
 
   # Controller Service
   controller:
-    image: purpletab-controller:latest
+    image: docutab-controller:latest
     build:
       context: .
       dockerfile: apps/controller/Dockerfile
-    container_name: purpletab-controller
+    container_name: docutab-controller
+    labels:
+      app: docutab
+      app.type: backend
     ports:
       - "9080:8080"
     environment:
@@ -106,21 +107,23 @@ services:
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
       - WEB_INTERFACE_URL=http://web:3001
+      # Queue configuration
+      - REDIS_ADDR=redis:6379
+      - WORKER_CONCURRENCY=10
+      - MAX_LINK_DEPTH=1
       # Tracing
       - TEMPO_ENDPOINT=tempo:4317
     volumes:
       - controller-data:/app/data
     restart: unless-stopped
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "2"
-        loki-max-backoff: "800ms"
         max-size: "10m"
         max-file: "3"
     depends_on:
+      redis:
+        condition: service_healthy
       scraper:
         condition: service_healthy
       textanalyzer:
@@ -136,12 +139,12 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
   # Web UI Service
   web:
-    image: purpletab-web:latest
+    image: docutab-web:latest
     build:
       context: .
       dockerfile: apps/web/Dockerfile
@@ -149,18 +152,17 @@ services:
         # Pass build-time arguments for Vite environment variables
         - VITE_PUBLIC_URL_BASE=http://localhost:9080
         - CONTROLLER_API_URL=http://controller:8080
-        - VITE_GRAFANA_URL=http://localhost:3000
-    container_name: purpletab-web
+        - VITE_GRAFANA_URL=http://localhost:3000/grafana
+    container_name: docutab-web
+    labels:
+      app: docutab
+      app.type: frontend
     ports:
       - "3001:80"
     restart: unless-stopped
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "2"
-        loki-max-backoff: "800ms"
         max-size: "10m"
         max-file: "3"
     depends_on:
@@ -175,16 +177,19 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - purpletab-network
+      - docutab-network
       - proxy
 
   # Scheduler Service
   scheduler:
-    image: purpletab-scheduler:latest
+    image: docutab-scheduler:latest
     build:
       context: .
       dockerfile: apps/scheduler/Dockerfile
-    container_name: purpletab-scheduler
+    container_name: docutab-scheduler
+    labels:
+      app: docutab
+      app.type: backend
     ports:
       - "9083:8080"
     environment:
@@ -199,12 +204,8 @@ services:
       - controller-data:/app/controller-data:ro
     restart: unless-stopped
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
-        loki-batch-size: "400"
-        loki-retries: "2"
-        loki-max-backoff: "800ms"
         max-size: "10m"
         max-file: "3"
     depends_on:
@@ -223,12 +224,47 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - purpletab-network
+      - docutab-network
+
+  # Redis - Message queue backend
+  redis:
+    image: redis:7-alpine
+    container_name: docutab-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --save 60 1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - docutab-network
+
+  # Asynqmon - Queue monitoring UI
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: docutab-asynqmon
+    platform: linux/amd64  # Force x86_64 for ARM64 compatibility (no ARM64 build available)
+    ports:
+      - "9084:8080"
+    environment:
+      - REDIS_ADDR=redis:6379
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - docutab-network
 
   # Loki - Log aggregation
   loki:
     image: grafana/loki:3.0.0
-    container_name: purpletab-loki
+    container_name: docutab-loki
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -237,12 +273,27 @@ services:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
+
+  # Promtail - Log collector for Loki
+  promtail:
+    image: grafana/promtail:3.0.0
+    container_name: docutab-promtail
+    volumes:
+      - ./config/promtail:/etc/promtail
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    command: -config.file=/etc/promtail/promtail-config-dev.yaml
+    restart: unless-stopped
+    depends_on:
+      - loki
+    networks:
+      - docutab-network
 
   # Tempo - Distributed tracing
   tempo:
     image: grafana/tempo:latest
-    container_name: purpletab-tempo
+    container_name: docutab-tempo
     command: [ "-config.file=/etc/tempo.yaml" ]
     ports:
       - "3200:3200"   # Tempo
@@ -253,12 +304,12 @@ services:
       - ./config/tempo-config.yaml:/etc/tempo.yaml
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
 
   # Grafana - Observability dashboard
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: purpletab-grafana
+    container_name: docutab-grafana
     ports:
       - "3000:3000"
     environment:
@@ -276,12 +327,12 @@ services:
       - loki
       - tempo
     networks:
-      - purpletab-network
+      - docutab-network
 
   # Prometheus - Metrics collection and monitoring
   prometheus:
     image: prom/prometheus:latest
-    container_name: purpletab-prometheus
+    container_name: docutab-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -296,18 +347,19 @@ services:
       - '--web.enable-lifecycle'
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
     logging:
-      driver: loki
+      driver: json-file
       options:
-        loki-url: "http://localhost:3100/loki/api/v1/push"
+        max-size: "10m"
+        max-file: "3"
     depends_on:
       - loki
 
   # Node Exporter - System and Docker volume metrics
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: purpletab-node-exporter
+    container_name: docutab-node-exporter
     ports:
       - "9100:9100"
     volumes:
@@ -322,7 +374,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     restart: unless-stopped
     networks:
-      - purpletab-network
+      - docutab-network
 
 volumes:
   controller-data:
@@ -335,6 +387,8 @@ volumes:
     driver: local
   scheduler-data:
     driver: local
+  redis-data:
+    driver: local
   loki-data:
     driver: local
   tempo-data:
@@ -345,8 +399,8 @@ volumes:
     driver: local
 
 networks:
-  purpletab-network:
-    name: purpletab-network
+  docutab-network:
+    name: docutab-network
     driver: bridge
   proxy:
     name: proxy

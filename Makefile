@@ -214,6 +214,10 @@ docker-rebuild: ## Rebuild and restart all services
 	@echo "Rebuilding and restarting all services..."
 	@echo "Running full test suite before rebuild..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running Timeline regression tests..."
+	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
+	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
 	@echo "✅ All tests passed! Proceeding with rebuild..."
 	@docker compose down
 	@docker compose build --no-cache
@@ -236,12 +240,20 @@ docker-health: ## Check health of all services
 docker-staging-build: ## Build all service images for staging
 	@echo "Running full test suite before staging build..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running Timeline regression tests..."
+	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
+	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
 	@echo "✅ All tests passed! Proceeding with staging build..."
 	@./build-staging.sh
 
 docker-staging-push: ## Build and push all images to ghcr.io/zombar
 	@echo "Running full test suite before staging push..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running Timeline regression tests..."
+	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
+	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
 	@echo "✅ All tests passed! Proceeding with staging push..."
 	@./build-staging.sh push
 
@@ -249,6 +261,10 @@ docker-staging-deploy: ## Full local deploy: build and start all services (dev m
 	@echo "🚀 Deploying to staging..."
 	@echo "Running full test suite before deployment..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running Timeline regression tests..."
+	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
+	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
 	@echo "✅ All tests passed! Proceeding with deployment..."
 	@./build-staging.sh
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d

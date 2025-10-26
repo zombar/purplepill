@@ -11,3 +11,9 @@ datasources:
     jsonData:
       timeInterval: "15s"
       httpMethod: POST
+      # Enable exemplars for trace correlation
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo
+        - name: traceID
+          datasourceUid: tempo

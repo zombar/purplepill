@@ -104,7 +104,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total[5m])",
+          "expr": "rate(http_requests_total{app=\"docutab\"}[5m])",
           "legendFormat": "{{service}} - {{method}} {{path}}",
           "refId": "A"
         }
@@ -194,7 +194,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p50",
           "refId": "A"
         },
@@ -203,7 +203,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p95",
           "refId": "B"
         },
@@ -212,7 +212,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p99",
           "refId": "C"
         }
@@ -270,7 +270,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "http_requests_active",
+          "expr": "http_requests_active{app=\"docutab\"}",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -405,7 +405,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total[5m])) by (service, status)",
+          "expr": "sum(rate(http_requests_total{app=\"docutab\"}[5m])) by (service, status)",
           "legendFormat": "{{service}} - {{status}}",
           "refId": "A"
         }
@@ -471,7 +471,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up",
+          "expr": "up{app=\"docutab\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -592,7 +592,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_open",
+          "expr": "db_connections_open{app=\"docutab\"}",
           "legendFormat": "{{service}} - Open",
           "refId": "A"
         },
@@ -601,7 +601,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_idle",
+          "expr": "db_connections_idle{app=\"docutab\"}",
           "legendFormat": "{{service}} - Idle",
           "refId": "B"
         }
@@ -691,7 +691,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(db_query_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(db_query_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p50",
           "refId": "A"
         },
@@ -700,7 +700,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(db_query_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p95",
           "refId": "B"
         },
@@ -709,7 +709,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(db_query_duration_seconds_bucket[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(db_query_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p99",
           "refId": "C"
         }
@@ -799,7 +799,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{app=\"docutab\",mode=\"idle\"}[5m])) * 100)",
           "legendFormat": "CPU Usage",
           "refId": "A"
         }
@@ -889,7 +889,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes",
+          "expr": "node_memory_MemTotal_bytes{app=\"docutab\"} - node_memory_MemAvailable_bytes{app=\"docutab\"}",
           "legendFormat": "Memory Used",
           "refId": "A"
         },
@@ -898,7 +898,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "node_memory_MemAvailable_bytes",
+          "expr": "node_memory_MemAvailable_bytes{app=\"docutab\"}",
           "legendFormat": "Memory Available",
           "refId": "B"
         }
@@ -934,7 +934,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{container_name=~\"purpletab.*\"}",
+          "expr": "{app=\"docutab\"}",
           "refId": "A"
         }
       ],
@@ -946,7 +946,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "purpletab",
+    "docutab",
     "backend"
   ],
   "templating": {
@@ -958,8 +958,8 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "PurpleTab Backend Metrics",
-  "uid": "purpletab-backend",
+  "title": "docutab Backend Metrics",
+  "uid": "docutab-backend",
   "version": 1,
   "weekStart": ""
 }
