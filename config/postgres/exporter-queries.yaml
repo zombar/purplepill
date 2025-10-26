@@ -1,0 +1,196 @@
+# Custom PostgreSQL Exporter Queries for DocuTab
+# These queries provide application-specific metrics
+
+pg_database_size_bytes:
+  query: "SELECT pg_database.datname, pg_database_size(pg_database.datname) as size_bytes FROM pg_database WHERE datname = 'docutab'"
+  master: true
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Name of the database"
+    - size_bytes:
+        usage: "GAUGE"
+        description: "Size of the database in bytes"
+
+pg_table_sizes:
+  query: |
+    SELECT
+      schemaname,
+      tablename,
+      pg_total_relation_size(schemaname||'.'||tablename) AS total_bytes,
+      pg_relation_size(schemaname||'.'||tablename) AS table_bytes,
+      pg_total_relation_size(schemaname||'.'||tablename) - pg_relation_size(schemaname||'.'||tablename) AS index_bytes,
+      pg_stat_get_live_tuples(c.oid) AS row_estimate
+    FROM pg_tables
+    JOIN pg_class c ON c.relname = pg_tables.tablename
+    WHERE schemaname = 'public'
+  metrics:
+    - schemaname:
+        usage: "LABEL"
+        description: "Schema name"
+    - tablename:
+        usage: "LABEL"
+        description: "Table name"
+    - total_bytes:
+        usage: "GAUGE"
+        description: "Total size including indexes"
+    - table_bytes:
+        usage: "GAUGE"
+        description: "Table size excluding indexes"
+    - index_bytes:
+        usage: "GAUGE"
+        description: "Index size"
+    - row_estimate:
+        usage: "GAUGE"
+        description: "Estimated row count"
+
+pg_stat_statements_top_queries:
+  query: |
+    SELECT
+      queryid::text,
+      left(query, 100) as query_short,
+      calls,
+      total_exec_time,
+      mean_exec_time,
+      rows
+    FROM pg_stat_statements
+    WHERE query NOT LIKE '%pg_stat_statements%'
+    ORDER BY mean_exec_time DESC
+    LIMIT 20
+  metrics:
+    - queryid:
+        usage: "LABEL"
+        description: "Query ID"
+    - query_short:
+        usage: "LABEL"
+        description: "Query text (truncated)"
+    - calls:
+        usage: "COUNTER"
+        description: "Number of times executed"
+    - total_exec_time:
+        usage: "COUNTER"
+        description: "Total execution time in milliseconds"
+    - mean_exec_time:
+        usage: "GAUGE"
+        description: "Mean execution time in milliseconds"
+    - rows:
+        usage: "COUNTER"
+        description: "Total rows returned or affected"
+
+pg_connection_states:
+  query: |
+    SELECT
+      COALESCE(datname, 'unknown') as datname,
+      COALESCE(state, 'unknown') as state,
+      COUNT(*) as connections
+    FROM pg_stat_activity
+    WHERE pid != pg_backend_pid()
+    GROUP BY datname, state
+  metrics:
+    - datname:
+        usage: "LABEL"
+        description: "Database name"
+    - state:
+        usage: "LABEL"
+        description: "Connection state"
+    - connections:
+        usage: "GAUGE"
+        description: "Number of connections in this state"
+
+pg_locks_by_mode:
+  query: |
+    SELECT
+      mode,
+      locktype,
+      COUNT(*) as locks
+    FROM pg_locks
+    GROUP BY mode, locktype
+  metrics:
+    - mode:
+        usage: "LABEL"
+        description: "Lock mode"
+    - locktype:
+        usage: "LABEL"
+        description: "Lock type"
+    - locks:
+        usage: "GAUGE"
+        description: "Number of locks"
+
+pg_replication_lag:
+  query: |
+    SELECT
+      client_addr,
+      application_name,
+      state,
+      COALESCE(EXTRACT(EPOCH FROM (now() - pg_last_xact_replay_timestamp())), 0) AS lag_seconds
+    FROM pg_stat_replication
+  master: true
+  metrics:
+    - client_addr:
+        usage: "LABEL"
+        description: "Client IP address"
+    - application_name:
+        usage: "LABEL"
+        description: "Application name"
+    - state:
+        usage: "LABEL"
+        description: "Replication state"
+    - lag_seconds:
+        usage: "GAUGE"
+        description: "Replication lag in seconds"
+
+pg_bloat_tables:
+  query: |
+    SELECT
+      schemaname,
+      tablename,
+      ROUND((CASE WHEN otta=0 THEN 0.0 ELSE sml.relpages::FLOAT/otta END)::NUMERIC, 1) AS tbloat,
+      CASE WHEN relpages < otta THEN 0 ELSE bs*(sml.relpages-otta)::BIGINT END AS wastedbytes
+    FROM (
+      SELECT
+        schemaname, tablename, cc.relpages, bs,
+        CEIL((cc.reltuples*((datahdr+ma-
+          (CASE WHEN datahdr%ma=0 THEN ma ELSE datahdr%ma END))+nullhdr2+4))/(bs-20::FLOAT)) AS otta
+      FROM (
+        SELECT
+          ma,bs,schemaname,tablename,
+          (datawidth+(hdr+ma-(CASE WHEN hdr%ma=0 THEN ma ELSE hdr%ma END)))::NUMERIC AS datahdr,
+          (maxfracsum*(nullhdr+ma-(CASE WHEN nullhdr%ma=0 THEN ma ELSE nullhdr%ma END))) AS nullhdr2
+        FROM (
+          SELECT
+            schemaname, tablename, hdr, ma, bs,
+            SUM((1-null_frac)*avg_width) AS datawidth,
+            MAX(null_frac) AS maxfracsum,
+            hdr+(
+              SELECT 1+COUNT(*)/8
+              FROM pg_stats s2
+              WHERE null_frac<>0 AND s2.schemaname = s.schemaname AND s2.tablename = s.tablename
+            ) AS nullhdr
+          FROM pg_stats s, (
+            SELECT
+              (SELECT current_setting('block_size')::NUMERIC) AS bs,
+              CASE WHEN SUBSTRING(v,12,3) IN ('8.0','8.1','8.2') THEN 27 ELSE 23 END AS hdr,
+              CASE WHEN v ~ 'mingw32' THEN 8 ELSE 4 END AS ma
+            FROM (SELECT version() AS v) AS foo
+          ) AS constants
+          WHERE schemaname = 'public'
+          GROUP BY 1,2,3,4,5
+        ) AS foo
+      ) AS rs
+      JOIN pg_class cc ON cc.relname = rs.tablename
+      JOIN pg_namespace nn ON cc.relnamespace = nn.oid AND nn.nspname = rs.schemaname AND nn.nspname <> 'information_schema'
+    ) AS sml
+    WHERE sml.relpages - otta > 10
+    ORDER BY wastedbytes DESC
+    LIMIT 10
+  metrics:
+    - schemaname:
+        usage: "LABEL"
+    - tablename:
+        usage: "LABEL"
+    - tbloat:
+        usage: "GAUGE"
+        description: "Table bloat ratio"
+    - wastedbytes:
+        usage: "GAUGE"
+        description: "Wasted bytes from bloat"
