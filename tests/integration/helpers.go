@@ -23,12 +23,16 @@ type ServiceConfig struct {
 
 // TestServices manages the lifecycle of test services
 type TestServices struct {
-	t              *testing.T
-	processes      map[string]*exec.Cmd
-	ollamaUp       bool
-	tempDBDir      string
-	mockOllama     *MockOllamaServer
-	mockOllamaPort int
+	t                *testing.T
+	processes        map[string]*exec.Cmd
+	ollamaUp         bool
+	tempDBDir        string
+	mockOllama       *MockOllamaServer
+	mockOllamaPort   int
+	redisContainer   string
+	redisPort        int
+	postgresContainer string
+	postgresPort      int
 }
 
 // NewTestServices creates a new test services manager
@@ -43,7 +47,15 @@ func NewTestServices(t *testing.T) *TestServices {
 		processes:      make(map[string]*exec.Cmd),
 		tempDBDir:      tempDir,
 		mockOllamaPort: 11435, // Use port 11435 to avoid conflict with real Ollama
+		redisPort:      16379, // Use port 16379 for test Redis
+		postgresPort:   15432, // Use port 15432 for test PostgreSQL
 	}
+
+	// Start PostgreSQL container for database tests
+	ts.startPostgres()
+
+	// Start Redis container for async queue support
+	ts.startRedis()
 
 	// Start mock Ollama server
 	ts.startMockOllama()
@@ -103,6 +115,12 @@ func (ts *TestServices) StopAll() {
 
 	// Stop mock Ollama server
 	ts.stopMockOllama()
+
+	// Stop Redis container
+	ts.stopRedis()
+
+	// Stop PostgreSQL container
+	ts.stopPostgres()
 
 	// Clean up temp directory
 	if ts.tempDBDir != "" {
@@ -254,4 +272,117 @@ func (ts *TestServices) stopMockOllama() {
 // GetOllamaURL returns the URL for the Ollama server (mock in tests)
 func (ts *TestServices) GetOllamaURL() string {
 	return fmt.Sprintf("http://localhost:%d", ts.mockOllamaPort)
+}
+
+// startRedis starts a Redis container for tests
+func (ts *TestServices) startRedis() {
+	ts.t.Logf("Starting Redis container on port %d...", ts.redisPort)
+
+	// Check if Redis container already exists and remove it
+	_ = exec.Command("docker", "rm", "-f", "docutab-test-redis").Run()
+
+	// Start Redis container
+	cmd := exec.Command("docker", "run", "-d",
+		"--name", "docutab-test-redis",
+		"-p", fmt.Sprintf("%d:6379", ts.redisPort),
+		"redis:7-alpine")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		ts.t.Fatalf("Failed to start Redis container: %v\nOutput: %s", err, string(output))
+	}
+
+	ts.redisContainer = "docutab-test-redis"
+
+	// Wait for Redis to be ready
+	time.Sleep(2 * time.Second)
+
+	// Verify Redis is responsive
+	client := &http.Client{Timeout: 1 * time.Second}
+	maxRetries := 10
+	for i := 0; i < maxRetries; i++ {
+		cmd := exec.Command("docker", "exec", ts.redisContainer, "redis-cli", "ping")
+		if output, err := cmd.CombinedOutput(); err == nil && string(output) == "PONG\n" {
+			ts.t.Log("Redis container started successfully")
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	ts.t.Log("Warning: Redis may not be fully ready, but continuing anyway...")
+	_ = client
+}
+
+// stopRedis stops and removes the Redis container
+func (ts *TestServices) stopRedis() {
+	if ts.redisContainer != "" {
+		ts.t.Log("Stopping Redis container...")
+		cmd := exec.Command("docker", "rm", "-f", ts.redisContainer)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			ts.t.Logf("Error stopping Redis container: %v\nOutput: %s", err, string(output))
+		}
+		ts.redisContainer = ""
+	}
+}
+
+// GetRedisAddr returns the Redis address for services
+func (ts *TestServices) GetRedisAddr() string {
+	return fmt.Sprintf("127.0.0.1:%d", ts.redisPort)
+}
+
+// startPostgres starts a PostgreSQL container for tests
+func (ts *TestServices) startPostgres() {
+	ts.t.Logf("Starting PostgreSQL container on port %d...", ts.postgresPort)
+
+	// Check if PostgreSQL container already exists and remove it
+	_ = exec.Command("docker", "rm", "-f", "docutab-test-postgres").Run()
+
+	// Start PostgreSQL container
+	cmd := exec.Command("docker", "run", "-d",
+		"--name", "docutab-test-postgres",
+		"-p", fmt.Sprintf("%d:5432", ts.postgresPort),
+		"-e", "POSTGRES_USER=docutab_test",
+		"-e", "POSTGRES_PASSWORD=test_pass",
+		"-e", "POSTGRES_DB=docutab_test",
+		"postgres:16-alpine")
+
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		ts.t.Fatalf("Failed to start PostgreSQL container: %v\nOutput: %s", err, string(output))
+	}
+
+	ts.postgresContainer = "docutab-test-postgres"
+
+	// Wait for PostgreSQL to be ready
+	ts.t.Log("Waiting for PostgreSQL to be ready...")
+	maxRetries := 30
+	for i := 0; i < maxRetries; i++ {
+		cmd := exec.Command("docker", "exec", ts.postgresContainer, "pg_isready", "-U", "docutab_test")
+		if _, err := cmd.CombinedOutput(); err == nil {
+			ts.t.Log("PostgreSQL container started successfully")
+			// Give it one more second to be fully ready
+			time.Sleep(1 * time.Second)
+			return
+		}
+		time.Sleep(500 * time.Millisecond)
+	}
+
+	ts.t.Fatal("PostgreSQL container failed to become ready")
+}
+
+// stopPostgres stops and removes the PostgreSQL container
+func (ts *TestServices) stopPostgres() {
+	if ts.postgresContainer != "" {
+		ts.t.Log("Stopping PostgreSQL container...")
+		cmd := exec.Command("docker", "rm", "-f", ts.postgresContainer)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			ts.t.Logf("Error stopping PostgreSQL container: %v\nOutput: %s", err, string(output))
+		}
+		ts.postgresContainer = ""
+	}
+}
+
+// GetPostgresConfig returns PostgreSQL connection details for services
+func (ts *TestServices) GetPostgresConfig() (host string, port int, user, password, database string) {
+	return "127.0.0.1", ts.postgresPort, "docutab_test", "test_pass", "docutab_test"
 }
