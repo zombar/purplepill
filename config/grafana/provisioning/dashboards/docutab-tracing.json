@@ -15,89 +15,33 @@
       }
     ]
   },
+  "description": "Distributed tracing metrics and trace exploration for DocuTab services",
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
-  "id": null,
+  "graphTooltip": 1,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "tempo",
         "uid": "tempo"
       },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
       "gridPos": {
-        "h": 8,
+        "h": 12,
         "w": 24,
         "x": 0,
         "y": 0
       },
       "id": 1,
       "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
+        "query": "{service.name=~\"docutab-.*\"}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
       },
+      "pluginVersion": "11.0.0",
       "targets": [
         {
           "datasource": {
@@ -105,18 +49,32 @@
             "uid": "tempo"
           },
           "limit": 20,
+          "query": "{service.name=~\"docutab-.*\"}",
           "queryType": "traceql",
-          "query": "{}",
-          "refId": "A"
+          "refId": "A",
+          "tableType": "traces"
         }
       ],
-      "title": "Recent Traces",
+      "title": "Recent Traces (DocuTab Services)",
       "type": "traces"
     },
     {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 10,
+      "panels": [],
+      "title": "Trace Volume Metrics",
+      "type": "row"
+    },
+    {
       "datasource": {
-        "type": "tempo",
-        "uid": "tempo"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -124,19 +82,21 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
             "axisPlacement": "auto",
             "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
+            "drawStyle": "line",
+            "fillOpacity": 10,
             "gradientMode": "none",
             "hideFrom": {
               "tooltip": false,
               "viz": false,
               "legend": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -163,7 +123,7 @@
               }
             ]
           },
-          "unit": "short"
+          "unit": "spans/s"
         },
         "overrides": []
       },
@@ -171,41 +131,39 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 8
+        "y": 13
       },
-      "id": 2,
+      "id": 11,
       "options": {
         "legend": {
-          "calcs": [
-            "sum"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
         {
           "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryType": "traceql",
-          "query": "{} | rate() by (span.http.method)",
+          "expr": "sum(rate(traces_spanmetrics_calls_total{service=~\"docutab-.*\"}[5m])) by (service)",
+          "legendFormat": "{{service}}",
           "refId": "A"
         }
       ],
-      "title": "Request Rate by HTTP Method",
+      "title": "Span Rate by Service",
       "type": "timeseries"
     },
     {
       "datasource": {
-        "type": "tempo",
-        "uid": "tempo"
+        "type": "prometheus",
+        "uid": "prometheus"
       },
       "fieldConfig": {
         "defaults": {
@@ -213,6 +171,7 @@
             "mode": "palette-classic"
           },
           "custom": {
+            "axisBorderShow": false,
             "axisCenteredZero": false,
             "axisColorMode": "text",
             "axisLabel": "",
@@ -226,6 +185,7 @@
               "viz": false,
               "legend": false
             },
+            "insertNulls": false,
             "lineInterpolation": "linear",
             "lineWidth": 1,
             "pointSize": 5,
@@ -252,7 +212,7 @@
               }
             ]
           },
-          "unit": "ms"
+          "unit": "s"
         },
         "overrides": []
       },
@@ -260,284 +220,318 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 8
+        "y": 13
       },
-      "id": 3,
+      "id": 12,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["mean", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
         {
           "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryType": "traceql",
-          "query": "{} | quantile_over_time(duration, 0.5) by (resource.service.name)",
+          "expr": "histogram_quantile(0.99, sum(rate(traces_spanmetrics_latency_bucket{service=~\"docutab-.*\"}[5m])) by (service, le))",
+          "legendFormat": "{{service}} p99",
           "refId": "A"
         },
         {
-          "query": "{} | quantile_over_time(duration, 0.95) by (resource.service.name)",
           "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryType": "traceql",
+          "expr": "histogram_quantile(0.95, sum(rate(traces_spanmetrics_latency_bucket{service=~\"docutab-.*\"}[5m])) by (service, le))",
+          "legendFormat": "{{service}} p95",
           "refId": "B"
         },
         {
-          "query": "{} | quantile_over_time(duration, 0.99) by (resource.service.name)",
           "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
+            "type": "prometheus",
+            "uid": "prometheus"
           },
-          "queryType": "traceql",
+          "expr": "histogram_quantile(0.50, sum(rate(traces_spanmetrics_latency_bucket{service=~\"docutab-.*\"}[5m])) by (service, le))",
+          "legendFormat": "{{service}} p50",
           "refId": "C"
         }
       ],
-      "title": "Request Duration by Service (p50, p95, p99)",
+      "title": "Span Duration (Percentiles) by Service",
       "type": "timeseries"
     },
     {
-      "datasource": {
-        "type": "tempo",
-        "uid": "tempo"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
+      "collapsed": false,
       "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 16
-      },
-      "id": 4,
-      "options": {
-        "legend": {
-          "calcs": [
-            "sum"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
-          },
-          "queryType": "traceql",
-          "query": "{} | rate() by (resource.service.name)",
-          "refId": "A"
-        }
-      ],
-      "title": "Trace Rate by Service",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "tempo"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "bars",
-            "fillOpacity": 100,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": ".*error.*"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 16
-      },
-      "id": 5,
-      "options": {
-        "legend": {
-          "calcs": [
-            "sum"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "tempo",
-            "uid": "tempo"
-          },
-          "queryType": "traceql",
-          "query": "{span.http.status_code>=400} | rate() by (resource.service.name)",
-          "refId": "A"
-        }
-      ],
-      "title": "Error Rate by Service",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "tempo",
-        "uid": "tempo"
-      },
-      "gridPos": {
-        "h": 8,
+        "h": 1,
         "w": 24,
         "x": 0,
-        "y": 24
+        "y": 21
       },
-      "id": 6,
+      "id": 20,
+      "panels": [],
+      "title": "Trace Search & Filtering",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 21,
       "options": {
-        "query": "",
-        "queryType": "search",
+        "query": "{service.name=\"docutab-controller\"}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
         "serviceName": "",
-        "spanName": ""
+        "spanName": "",
+        "tags": []
       },
-      "title": "Trace Search",
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 20,
+          "query": "{service.name=\"docutab-controller\"}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Controller Traces",
+      "type": "traces"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 22,
+      "options": {
+        "query": "{service.name=\"docutab-scraper\"}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 20,
+          "query": "{service.name=\"docutab-scraper\"}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Scraper Traces",
+      "type": "traces"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 0,
+        "y": 32
+      },
+      "id": 23,
+      "options": {
+        "query": "{service.name=\"docutab-textanalyzer\"}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 20,
+          "query": "{service.name=\"docutab-textanalyzer\"}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "TextAnalyzer Traces",
+      "type": "traces"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 12,
+        "x": 12,
+        "y": 32
+      },
+      "id": 24,
+      "options": {
+        "query": "{service.name=\"docutab-scheduler\"}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 20,
+          "query": "{service.name=\"docutab-scheduler\"}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Scheduler Traces",
+      "type": "traces"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 42
+      },
+      "id": 30,
+      "panels": [],
+      "title": "Error Traces",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 43
+      },
+      "id": 31,
+      "options": {
+        "query": "{status=error}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 50,
+          "query": "{status=error}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Error Traces (All Services)",
+      "type": "traces"
+    },
+    {
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 53
+      },
+      "id": 40,
+      "panels": [],
+      "title": "Slow Traces",
+      "type": "row"
+    },
+    {
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 54
+      },
+      "id": 41,
+      "options": {
+        "query": "{service.name=~\"docutab-.*\" && duration > 1s}",
+        "queryType": "traceql",
+        "serviceGraphQuery": "",
+        "serviceName": "",
+        "spanName": "",
+        "tags": []
+      },
+      "pluginVersion": "11.0.0",
+      "targets": [
+        {
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "limit": 50,
+          "query": "{service.name=~\"docutab-.*\" && duration > 1s}",
+          "queryType": "traceql",
+          "refId": "A",
+          "tableType": "traces"
+        }
+      ],
+      "title": "Slow Traces (> 1 second)",
       "type": "traces"
     }
   ],
-  "refresh": "10s",
-  "schemaVersion": 38,
-  "style": "dark",
-  "tags": [
-    "docutab",
-    "tracing",
-    "tempo"
-  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["docutab", "tracing", "tempo"],
   "templating": {
     "list": []
   },
@@ -547,7 +541,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "docutab Distributed Tracing",
+  "title": "DocuTab Distributed Tracing",
   "uid": "docutab-tracing",
   "version": 1,
   "weekStart": ""

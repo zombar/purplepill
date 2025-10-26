@@ -57,3 +57,36 @@ scrape_configs:
       # Extract log stream (stdout/stderr)
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'stream'
+
+    # Pipeline stages to parse JSON logs and extract structured fields
+    pipeline_stages:
+      # Parse JSON logs
+      - json:
+          expressions:
+            timestamp: time
+            level: level
+            message: msg
+            trace_id: trace_id
+            span_id: span_id
+            method: method
+            path: path
+            status: status
+            duration_ms: duration_ms
+            error: error
+            service: service
+            component: component
+            app: app
+
+      # Extract trace_id as a label for correlation with Tempo
+      - labels:
+          trace_id:
+          span_id:
+
+      # Extract level as a label for filtering
+      - labels:
+          level:
+
+      # Set timestamp from log entry if available
+      - timestamp:
+          source: timestamp
+          format: RFC3339

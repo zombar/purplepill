@@ -272,10 +272,7 @@
   ],
   "refresh": "10s",
   "schemaVersion": 38,
-  "tags": [
-    "docutab",
-    "logs"
-  ],
+  "tags": ["docutab", "logs"],
   "templating": {
     "list": []
   },
@@ -285,7 +282,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "DocuTab Service Logs",
+  "title": "docutab Service Logs",
   "uid": "docutab-logs",
   "version": 1
 }

@@ -799,8 +799,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(process_cpu_seconds_total{app=\"docutab\"}[5m]) * 100",
-          "legendFormat": "{{service}} - CPU Usage",
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{app=\"docutab\",mode=\"idle\"}[5m])) * 100)",
+          "legendFormat": "CPU Usage",
           "refId": "A"
         }
       ],
@@ -889,8 +889,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_alloc_bytes{app=\"docutab\"}",
-          "legendFormat": "{{service}} - Allocated Memory",
+          "expr": "node_memory_MemTotal_bytes{app=\"docutab\"} - node_memory_MemAvailable_bytes{app=\"docutab\"}",
+          "legendFormat": "Memory Used",
           "refId": "A"
         },
         {
@@ -898,8 +898,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_sys_bytes{app=\"docutab\"}",
-          "legendFormat": "{{service}} - System Memory",
+          "expr": "node_memory_MemAvailable_bytes{app=\"docutab\"}",
+          "legendFormat": "Memory Available",
           "refId": "B"
         }
       ],
@@ -958,7 +958,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "DocuTab Backend Metrics",
+  "title": "docutab Backend Metrics",
   "uid": "docutab-backend",
   "version": 1,
   "weekStart": ""
