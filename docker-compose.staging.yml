@@ -13,6 +13,9 @@ services:
   controller:
     image: ghcr.io/zombar/docutab-controller:staging
     container_name: docutab-controller
+    labels:
+      app: docutab
+      app.type: backend
     logging:
       driver: json-file
       options:
@@ -60,6 +63,9 @@ services:
   scraper:
     image: ghcr.io/zombar/docutab-scraper:staging
     container_name: docutab-scraper
+    labels:
+      app: docutab
+      app.type: backend
     logging:
       driver: json-file
       options:
@@ -93,6 +99,9 @@ services:
   textanalyzer:
     image: ghcr.io/zombar/docutab-textanalyzer:staging
     container_name: docutab-textanalyzer
+    labels:
+      app: docutab
+      app.type: backend
     logging:
       driver: json-file
       options:
@@ -124,6 +133,9 @@ services:
   scheduler:
     image: ghcr.io/zombar/docutab-scheduler:staging
     container_name: docutab-scheduler
+    labels:
+      app: docutab
+      app.type: backend
     logging:
       driver: json-file
       options:
@@ -156,6 +168,9 @@ services:
   web:
     image: ghcr.io/zombar/docutab-web:staging
     container_name: docutab-web
+    labels:
+      app: docutab
+      app.type: frontend
     logging:
       driver: json-file
       options:

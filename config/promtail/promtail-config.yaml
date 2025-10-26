@@ -17,10 +17,18 @@ scrape_configs:
         # No filters - scrape all containers, then filter by relabel_configs
 
     relabel_configs:
-      # Only scrape containers with names starting with 'docutab-'
-      - source_labels: ['__meta_docker_container_name']
-        regex: '/docutab-.*'
+      # Only scrape containers with app=docutab label
+      - source_labels: ['__meta_docker_container_label_app']
+        regex: 'docutab'
         action: keep
+
+      # Add app label
+      - source_labels: ['__meta_docker_container_label_app']
+        target_label: 'app'
+
+      # Add app.type label (backend/frontend)
+      - source_labels: ['__meta_docker_container_label_app_type']
+        target_label: 'app_type'
 
       # Use container name as the main identifier
       - source_labels: ['__meta_docker_container_name']

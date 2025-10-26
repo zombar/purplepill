@@ -934,7 +934,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{environment=\"staging\"}",
+          "expr": "{app=\"docutab\"}",
           "refId": "A"
         }
       ],
