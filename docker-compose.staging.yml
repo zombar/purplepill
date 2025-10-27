@@ -257,11 +257,13 @@ services:
       - "9084:8080"
     environment:
       - REDIS_ADDR=redis:6379
-    command: ["--enable-metrics-exporter", "--path=/asynq"]
+    command: ["--enable-metrics-exporter", "--prometheus-addr=http://prometheus:9090"]
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
+      prometheus:
+        condition: service_started
     networks:
       - docutab-network
       - proxy
