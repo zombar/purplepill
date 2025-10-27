@@ -63,10 +63,15 @@ func TestControllerIntegration(t *testing.T) {
 		Name:        "textanalyzer",
 		Port:        18082,
 		BinaryPath:  analyzerBin,
-		Args:        []string{"-port", "18082", "-db", services.GetDBPath("textanalyzer")},
-		Env:         []string{
+		Args:        []string{"-port", "18082"},
+		Env: []string{
 			"OLLAMA_URL=" + services.GetOllamaURL(),
 			"REDIS_ADDR=" + services.GetRedisAddr(),
+			"DB_HOST=" + pgHost,
+			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
+			"DB_USER=" + pgUser,
+			"DB_PASSWORD=" + pgPass,
+			"DB_NAME=" + pgDB,
 		},
 		HealthCheck: textAnalyzerURL + "/health",
 	}
