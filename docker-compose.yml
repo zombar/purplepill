@@ -13,15 +13,18 @@ services:
       - "9082:8080"
     environment:
       - PORT=8080
-      - DB_PATH=/data/textanalyzer.db
+      # PostgreSQL configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=docutab
+      - DB_PASSWORD=docutab_dev_pass
+      - DB_NAME=textanalyzer_db
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
-      - OLLAMA_MODEL=gemma3:12b
+      - OLLAMA_MODEL=gemma3:4b
       - REDIS_ADDR=redis:6379
       - WORKER_CONCURRENCY=5
       - TEMPO_ENDPOINT=tempo:4317
-    volumes:
-      - textanalyzer-data:/data
     restart: unless-stopped
     logging:
       driver: json-file
@@ -37,6 +40,8 @@ services:
     networks:
       - docutab-network
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       loki:
@@ -60,15 +65,15 @@ services:
       - PORT=8080
       - STORAGE_BASE_PATH=/app/storage
       - OLLAMA_URL=http://100.64.0.2:11434
-      - OLLAMA_MODEL=gemma3:12b
+      - OLLAMA_MODEL=gemma3:4b
       - TEMPO_ENDPOINT=tempo:4317
       # PostgreSQL configuration
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=docutab
       - DB_PASSWORD=docutab_dev_pass
-      - DB_NAME=docutab
-      # - OLLAMA_VISION_MODEL=gemma3.12b
+      - DB_NAME=scraper_db
+      # - OLLAMA_VISION_MODEL=gemma3:4b
       # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
     volumes:
       - scraper-storage:/app/storage
@@ -116,7 +121,12 @@ services:
       - SCHEDULER_BASE_URL=http://scheduler:8080
       # Controller configuration
       - CONTROLLER_PORT=8080
-      - DATABASE_PATH=/app/data/controller.db
+      # PostgreSQL configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=docutab
+      - DB_PASSWORD=docutab_dev_pass
+      - DB_NAME=controller_db
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
@@ -127,8 +137,6 @@ services:
       - MAX_LINK_DEPTH=1
       # Tracing
       - TEMPO_ENDPOINT=tempo:4317
-    volumes:
-      - controller-data:/app/data
     restart: unless-stopped
     logging:
       driver: json-file
@@ -136,6 +144,8 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
+      postgres:
+        condition: service_healthy
       redis:
         condition: service_healthy
       scraper:
@@ -167,6 +177,7 @@ services:
         - VITE_PUBLIC_URL_BASE=http://localhost:9080
         - CONTROLLER_API_URL=http://controller:8080
         - VITE_GRAFANA_URL=http://localhost:3000/grafana
+        - VITE_ASYNQ_URL=http://localhost:3001/asynq
     container_name: docutab-web
     labels:
       app: docutab
@@ -208,14 +219,15 @@ services:
       - "9083:8080"
     environment:
       - PORT=8080
-      - DB_PATH=/app/data/scheduler.db
-      - CONTROLLER_DB_PATH=/app/controller-data/controller.db
+      # PostgreSQL configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=docutab
+      - DB_PASSWORD=docutab_dev_pass
+      - DB_NAME=scheduler_db
       - CONTROLLER_BASE_URL=http://controller:8080
       - SCRAPER_URL=http://scraper:8080
       - TEMPO_ENDPOINT=tempo:4317
-    volumes:
-      - scheduler-data:/app/data
-      - controller-data:/app/controller-data:ro
     restart: unless-stopped
     logging:
       driver: json-file
@@ -223,6 +235,8 @@ services:
         max-size: "10m"
         max-file: "3"
     depends_on:
+      postgres:
+        condition: service_healthy
       controller:
         condition: service_healthy
       scraper:
@@ -294,6 +308,7 @@ services:
       - postgres-logs:/var/log/postgresql
       - ./config/postgres/dev.conf:/etc/postgresql/dev.conf:ro
       - ./config/postgres/staging.conf:/etc/postgresql/staging.conf:ro
+      - ./config/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     command: postgres -c config_file=/etc/postgresql/dev.conf
     restart: unless-stopped
     healthcheck:
@@ -451,13 +466,7 @@ services:
       - docutab-network
 
 volumes:
-  controller-data:
-    driver: local
   scraper-storage:
-    driver: local
-  textanalyzer-data:
-    driver: local
-  scheduler-data:
     driver: local
   redis-data:
     driver: local

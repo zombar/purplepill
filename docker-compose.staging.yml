@@ -257,12 +257,14 @@ services:
       - "9084:8080"
     environment:
       - REDIS_ADDR=redis:6379
+    command: ["--enable-metrics-exporter", "--path=/asynq"]
     restart: unless-stopped
     depends_on:
       redis:
         condition: service_healthy
     networks:
       - docutab-network
+      - proxy
 
   web:
     image: ghcr.io/zombar/docutab-web:staging
