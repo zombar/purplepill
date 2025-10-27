@@ -229,7 +229,7 @@
             "uid": "tempo"
           },
           "limit": 20,
-          "query": "{.service.name=~\"docutab-.*\"}",
+          "query": "{resource.service.name=~\"docutab-.*\"}",
           "queryType": "traceql",
           "refId": "A",
           "tableType": "traces"
