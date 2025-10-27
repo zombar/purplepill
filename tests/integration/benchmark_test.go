@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sync"
@@ -13,9 +14,9 @@ import (
 )
 
 const (
-	benchControllerURL    = "http://localhost:18080"
-	benchScraperURL       = "http://localhost:18081"
-	benchTextAnalyzerURL  = "http://localhost:18082"
+	benchControllerURL   = "http://localhost:18080"
+	benchScraperURL      = "http://localhost:18081"
+	benchTextAnalyzerURL = "http://localhost:18082"
 )
 
 // BenchmarkResult holds benchmark statistics
@@ -79,10 +80,10 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 	pgHost, pgPort, pgUser, pgPass, _ := services.GetPostgresConfig()
 
 	scraperConfig := ServiceConfig{
-		Name:        "scraper",
-		Port:        18081,
-		BinaryPath:  scraperBin,
-		Args:        []string{"-port", "18081"},
+		Name:       "scraper",
+		Port:       18081,
+		BinaryPath: scraperBin,
+		Args:       []string{"-port", "18081"},
 		Env: []string{
 			"OLLAMA_URL=" + services.GetOllamaURL(),
 			"DB_HOST=" + pgHost,
@@ -95,10 +96,10 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 	}
 
 	analyzerConfig := ServiceConfig{
-		Name:        "textanalyzer",
-		Port:        18082,
-		BinaryPath:  analyzerBin,
-		Args:        []string{"-port", "18082"},
+		Name:       "textanalyzer",
+		Port:       18082,
+		BinaryPath: analyzerBin,
+		Args:       []string{"-port", "18082"},
 		Env: []string{
 			"OLLAMA_URL=" + services.GetOllamaURL(),
 			"REDIS_ADDR=" + services.GetRedisAddr(),
@@ -112,9 +113,9 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 	}
 
 	controllerConfig := ServiceConfig{
-		Name:        "controller",
-		Port:        18080,
-		BinaryPath:  controllerBin,
+		Name:       "controller",
+		Port:       18080,
+		BinaryPath: controllerBin,
 		Env: []string{
 			"CONTROLLER_PORT=18080",
 			"SCRAPER_BASE_URL=" + benchScraperURL,
@@ -155,8 +156,9 @@ func benchmarkDirectAnalysis(t *testing.T, totalRequests, concurrency int) {
 	}
 
 	result := runLoadTest(t, totalRequests, concurrency, func(i int) (*http.Response, error) {
-		// Rotate through test texts
-		text := testTexts[i%len(testTexts)]
+		// Rotate through test texts with unique request number integrated into the text
+		// to ensure unique slugs even after text cleaning
+		text := fmt.Sprintf("Request %d: %s", i, testTexts[i%len(testTexts)])
 
 		reqBody := map[string]interface{}{
 			"text": text,
@@ -185,9 +187,9 @@ func benchmarkMixedWorkload(t *testing.T, requestsPerType, concurrency int) {
 
 		// Alternate between analyze and scrape
 		if i%2 == 0 {
-			// Text analysis
+			// Text analysis with unique identifier integrated into text to avoid slug conflicts
 			reqBody := map[string]interface{}{
-				"text": "Sample text for benchmarking purposes.",
+				"text": fmt.Sprintf("Request %d sample text for benchmarking purposes", i),
 			}
 
 			body, err := json.Marshal(reqBody)
@@ -271,7 +273,9 @@ func runLoadTest(t *testing.T, totalRequests, concurrency int, requestFunc func(
 
 				if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 					atomic.AddInt64(&failCount, 1)
-					t.Logf("Request %d returned status %d", i, resp.StatusCode)
+					// Read error response body
+					bodyBytes, _ := io.ReadAll(resp.Body)
+					t.Logf("Request %d returned status %d, body: %s", i, resp.StatusCode, string(bodyBytes))
 				} else {
 					atomic.AddInt64(&successCount, 1)
 				}
@@ -305,18 +309,18 @@ func runLoadTest(t *testing.T, totalRequests, concurrency int, requestFunc func(
 
 // printBenchmarkResults outputs formatted benchmark results
 func printBenchmarkResults(t *testing.T, name string, result BenchmarkResult) {
-	t.Logf("\n" +
-		"========================================\n" +
-		"Benchmark Results: %s\n" +
-		"========================================\n" +
-		"Total Requests:        %d\n" +
-		"Successful:            %d (%.1f%%)\n" +
-		"Failed:                %d (%.1f%%)\n" +
-		"Total Duration:        %v\n" +
-		"Average Response Time: %v\n" +
-		"Min Response Time:     %v\n" +
-		"Max Response Time:     %v\n" +
-		"Requests/Second:       %.2f\n" +
+	t.Logf("\n"+
+		"========================================\n"+
+		"Benchmark Results: %s\n"+
+		"========================================\n"+
+		"Total Requests:        %d\n"+
+		"Successful:            %d (%.1f%%)\n"+
+		"Failed:                %d (%.1f%%)\n"+
+		"Total Duration:        %v\n"+
+		"Average Response Time: %v\n"+
+		"Min Response Time:     %v\n"+
+		"Max Response Time:     %v\n"+
+		"Requests/Second:       %.2f\n"+
 		"========================================\n",
 		name,
 		result.TotalRequests,
