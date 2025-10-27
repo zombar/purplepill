@@ -264,6 +264,7 @@ services:
         condition: service_healthy
     networks:
       - docutab-network
+      - proxy
 
   web:
     image: ghcr.io/zombar/docutab-web:staging
