@@ -31,6 +31,11 @@ type BusinessMetrics struct {
 	ScrapeJobsByStatus  *prometheus.GaugeVec
 	QueueLength         prometheus.Gauge
 
+	// Tombstone metrics (controller)
+	TombstonesCreatedTotal *prometheus.CounterVec // Counter by reason (low-score, tag-based, manual)
+	TombstonesPending      prometheus.Gauge       // Current number of tombstoned items awaiting deletion
+	TombstoneDaysHistogram *prometheus.HistogramVec // Distribution of tombstone periods by reason
+
 	// Scraper metrics
 	ScrapesCompletedTotal *prometheus.CounterVec
 	LinksExtractedTotal   prometheus.Counter
@@ -89,6 +94,32 @@ func NewBusinessMetrics(serviceName string) *BusinessMetrics {
 		prometheus.MustRegister(m.ScrapeJobsTotal)
 		prometheus.MustRegister(m.ScrapeJobsByStatus)
 		prometheus.MustRegister(m.QueueLength)
+
+		// Tombstone metrics
+		m.TombstonesCreatedTotal = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "docutab_tombstones_created_total",
+				Help: "Total number of tombstones created",
+			},
+			[]string{"reason", "tag"}, // reason: low-score|tag-based|manual, tag: the specific tag or "none"
+		)
+		m.TombstonesPending = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_tombstones_pending",
+				Help: "Current number of items marked for tombstoning (not yet deleted)",
+			},
+		)
+		m.TombstoneDaysHistogram = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "docutab_tombstone_period_days",
+				Help:    "Distribution of tombstone periods in days",
+				Buckets: []float64{1, 7, 14, 30, 60, 90, 180, 365},
+			},
+			[]string{"reason"}, // low-score|tag-based|manual
+		)
+		prometheus.MustRegister(m.TombstonesCreatedTotal)
+		prometheus.MustRegister(m.TombstonesPending)
+		prometheus.MustRegister(m.TombstoneDaysHistogram)
 
 	case "scraper":
 		m.ScrapesCompletedTotal = prometheus.NewCounterVec(
