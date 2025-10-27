@@ -1,32 +1,19 @@
 {
   "annotations": {
-    "list": [
-      {
-        "builtIn": 1,
-        "datasource": {
-          "type": "grafana",
-          "uid": "-- Grafana --"
-        },
-        "enable": true,
-        "hide": true,
-        "iconColor": "rgba(0, 211, 255, 1)",
-        "name": "Annotations & Alerts",
-        "type": "dashboard"
-      }
-    ]
+    "list": []
   },
   "editable": true,
   "fiscalYearStartMonth": 0,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
   "links": [],
-  "liveNow": false,
   "panels": [
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Number of tasks waiting in each queue",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -35,7 +22,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Tasks",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -47,7 +34,7 @@
               "legend": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -56,7 +43,7 @@
             "spanNulls": false,
             "stacking": {
               "group": "A",
-              "mode": "none"
+              "mode": "normal"
             },
             "thresholdsStyle": {
               "mode": "off"
@@ -69,10 +56,18 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
               }
             ]
           },
-          "unit": "reqps"
+          "unit": "short"
         },
         "overrides": []
       },
@@ -85,17 +80,14 @@
       "id": 1,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -104,12 +96,21 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total{app=\"docutab\"}[5m])",
-          "legendFormat": "{{service}} - {{method}} {{path}}",
+          "expr": "asynq_tasks_enqueued_total{service=\"asynq\", state=\"pending\"}",
+          "legendFormat": "{{queue}} - pending",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "asynq_tasks_enqueued_total{service=\"asynq\", state=\"active\"}",
+          "legendFormat": "{{queue}} - active",
+          "refId": "B"
         }
       ],
-      "title": "HTTP Request Rate",
+      "title": "Queue Size by State",
       "type": "timeseries"
     },
     {
@@ -117,6 +118,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Rate of task processing (completed and failed)",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -125,7 +127,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Tasks/sec",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -137,7 +139,7 @@
               "legend": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -162,9 +164,25 @@
               }
             ]
           },
-          "unit": "s"
+          "unit": "ops"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*failed.*"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 8,
@@ -175,17 +193,14 @@
       "id": 2,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
+          "calcs": ["lastNotNull", "mean"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -194,8 +209,8 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
-          "legendFormat": "{{service}} - p50",
+          "expr": "rate(asynq_tasks_processed_total{service=\"asynq\"}[5m])",
+          "legendFormat": "{{queue}} - processed",
           "refId": "A"
         },
         {
@@ -203,21 +218,12 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
-          "legendFormat": "{{service}} - p95",
+          "expr": "rate(asynq_tasks_failed_total{service=\"asynq\"}[5m])",
+          "legendFormat": "{{queue}} - failed",
           "refId": "B"
-        },
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
-          "legendFormat": "{{service}} - p99",
-          "refId": "C"
         }
       ],
-      "title": "HTTP Request Duration (Percentiles)",
+      "title": "Task Processing Rate",
       "type": "timeseries"
     },
     {
@@ -225,6 +231,103 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "Average time tasks spend waiting in queue before processing",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "Wait Time",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": false,
+            "stacking": {
+              "group": "A",
+              "mode": "none"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 30
+              },
+              {
+                "color": "red",
+                "value": 60
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "id": 3,
+      "options": {
+        "legend": {
+          "calcs": ["lastNotNull", "max", "mean"],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "asynq_queue_latency_seconds{service=\"asynq\"}",
+          "legendFormat": "{{queue}} - latency",
+          "refId": "A"
+        }
+      ],
+      "title": "Queue Latency (Oldest Pending Task)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Retry statistics for failed tasks",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -237,6 +340,14 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 50
               }
             ]
           },
@@ -245,12 +356,12 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 6,
-        "x": 0,
+        "h": 8,
+        "w": 12,
+        "x": 12,
         "y": 8
       },
-      "id": 3,
+      "id": 4,
       "options": {
         "orientation": "auto",
         "reduceOptions": {
@@ -261,21 +372,22 @@
           "fields": ""
         },
         "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "showThresholdMarkers": true,
+        "text": {}
       },
-      "pluginVersion": "9.5.3",
+      "pluginVersion": "10.0.0",
       "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "http_requests_active{app=\"docutab\"}",
-          "legendFormat": "{{service}}",
+          "expr": "sum(asynq_tasks_enqueued_total{service=\"asynq\", state=\"retry\"}) by (queue)",
+          "legendFormat": "{{queue}}",
           "refId": "A"
         }
       ],
-      "title": "Active Requests",
+      "title": "Tasks in Retry State",
       "type": "gauge"
     },
     {
@@ -283,6 +395,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "PostgreSQL database connections",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -291,7 +404,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Connections",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -303,7 +416,7 @@
               "legend": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -330,73 +443,25 @@
           },
           "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*2.*/i"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*4.*/i"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "yellow",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "/.*5.*/i"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "red",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 6,
-        "y": 8
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
       },
-      "id": 4,
+      "id": 5,
       "options": {
         "legend": {
-          "calcs": [
-            "sum"
-          ],
+          "calcs": ["lastNotNull", "max"],
           "displayMode": "table",
-          "placement": "right",
+          "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -405,85 +470,29 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{app=\"docutab\"}[5m])) by (service, status)",
-          "legendFormat": "{{service}} - {{status}}",
+          "expr": "db_connections_open{app=\"docutab\"}",
+          "legendFormat": "{{service}} - open",
           "refId": "A"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "db_connections_idle{app=\"docutab\"}",
+          "legendFormat": "{{service}} - idle",
+          "refId": "B"
         }
       ],
-      "title": "HTTP Status Codes by Service",
+      "title": "Database Connections",
       "type": "timeseries"
     },
     {
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
           },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 0
-              },
-              {
-                "color": "green",
-                "value": 1
-              }
-            ]
-          },
-          "unit": "short"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 6,
-        "w": 9,
-        "x": 15,
-        "y": 8
-      },
-      "id": 5,
-      "options": {
-        "orientation": "auto",
-        "reduceOptions": {
-          "values": false,
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": ""
-        },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
-      },
-      "pluginVersion": "9.5.3",
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "up{app=\"docutab\"}",
-          "legendFormat": "{{job}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Service Health",
-      "type": "gauge"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
+      "description": "Database connection pool metrics",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -492,7 +501,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Connections",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -503,8 +512,8 @@
               "viz": false,
               "legend": false
             },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -526,64 +535,38 @@
               {
                 "color": "green",
                 "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 5
+              },
+              {
+                "color": "red",
+                "value": 10
               }
             ]
           },
           "unit": "short"
         },
-        "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Open"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "blue",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "Idle"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "fixedColor": "green",
-                  "mode": "fixed"
-                }
-              }
-            ]
-          }
-        ]
+        "overrides": []
       },
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 0,
-        "y": 14
+        "x": 12,
+        "y": 16
       },
       "id": 6,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull", "max"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -593,7 +576,7 @@
             "uid": "prometheus"
           },
           "expr": "db_connections_open{app=\"docutab\"}",
-          "legendFormat": "{{service}} - Open",
+          "legendFormat": "{{service}} - open",
           "refId": "A"
         },
         {
@@ -601,9 +584,18 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_idle{app=\"docutab\"}",
-          "legendFormat": "{{service}} - Idle",
+          "expr": "db_connections_in_use{app=\"docutab\"}",
+          "legendFormat": "{{service}} - in use",
           "refId": "B"
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "db_connections_idle{app=\"docutab\"}",
+          "legendFormat": "{{service}} - idle",
+          "refId": "C"
         }
       ],
       "title": "Database Connection Pool",
@@ -614,6 +606,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "PostgreSQL database size and growth",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -622,7 +615,7 @@
           "custom": {
             "axisCenteredZero": false,
             "axisColorMode": "text",
-            "axisLabel": "",
+            "axisLabel": "Size",
             "axisPlacement": "auto",
             "barAlignment": 0,
             "drawStyle": "line",
@@ -634,187 +627,7 @@
               "legend": false
             },
             "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "s"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 12,
-        "y": 14
-      },
-      "id": 7,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "rate(db_connections_wait_duration_seconds_total{app=\"docutab\"}[5m]) / rate(db_connections_wait_count_total{app=\"docutab\"}[5m])",
-          "legendFormat": "{{service}} - avg wait time",
-          "refId": "A"
-        }
-      ],
-      "title": "Database Connection Wait Time",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": false,
-            "stacking": {
-              "group": "A",
-              "mode": "none"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              }
-            ]
-          },
-          "unit": "percent"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 8,
-        "w": 12,
-        "x": 0,
-        "y": 22
-      },
-      "id": 8,
-      "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "max"
-          ],
-          "displayMode": "table",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "none"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "prometheus"
-          },
-          "expr": "rate(process_cpu_seconds_total{app=\"docutab\"}[5m]) * 100",
-          "legendFormat": "{{service}} - CPU Usage",
-          "refId": "A"
-        }
-      ],
-      "title": "System CPU Usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "prometheus"
-      },
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisCenteredZero": false,
-            "axisColorMode": "text",
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "tooltip": false,
-              "viz": false,
-              "legend": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
+            "lineWidth": 2,
             "pointSize": 5,
             "scaleDistribution": {
               "type": "linear"
@@ -846,23 +659,20 @@
       "gridPos": {
         "h": 8,
         "w": 12,
-        "x": 12,
-        "y": 22
+        "x": 0,
+        "y": 24
       },
-      "id": 9,
+      "id": 7,
       "options": {
         "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull"
-          ],
+          "calcs": ["lastNotNull"],
           "displayMode": "table",
           "placement": "bottom",
           "showLegend": true
         },
         "tooltip": {
           "mode": "multi",
-          "sort": "none"
+          "sort": "desc"
         }
       },
       "targets": [
@@ -871,22 +681,97 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_alloc_bytes{app=\"docutab\"}",
-          "legendFormat": "{{service}} - Allocated Memory",
+          "expr": "pg_database_size_bytes{service=\"postgres\", datname=\"docutab\"}",
+          "legendFormat": "Database Size",
           "refId": "A"
+        }
+      ],
+      "title": "PostgreSQL Database Size",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Size of each database in PostgreSQL",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisCenteredZero": false,
+            "axisColorMode": "text",
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "hideFrom": {
+              "tooltip": false,
+              "viz": false,
+              "legend": false
+            },
+            "lineWidth": 1,
+            "scaleDistribution": {
+              "type": "linear"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "unit": "bytes"
         },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "id": 8,
+      "options": {
+        "barWidth": 0.97,
+        "fullHighlight": false,
+        "groupWidth": 0.7,
+        "legend": {
+          "calcs": [],
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
+        "orientation": "horizontal",
+        "showValue": "auto",
+        "stacking": "none",
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "xTickLabelRotation": 0,
+        "xTickLabelSpacing": 0
+      },
+      "pluginVersion": "10.0.0",
+      "targets": [
         {
           "datasource": {
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_sys_bytes{app=\"docutab\"}",
-          "legendFormat": "{{service}} - System Memory",
-          "refId": "B"
+          "expr": "pg_database_size_bytes{service=\"postgres\"}",
+          "legendFormat": "{{datname}}",
+          "refId": "A"
         }
       ],
-      "title": "System Memory Usage",
-      "type": "timeseries"
+      "title": "Database Sizes",
+      "type": "barchart"
     },
     {
       "datasource": {
@@ -894,21 +779,21 @@
         "uid": "loki"
       },
       "gridPos": {
-        "h": 12,
+        "h": 8,
         "w": 24,
         "x": 0,
-        "y": 30
+        "y": 32
       },
-      "id": 10,
+      "id": 9,
       "options": {
         "dedupStrategy": "none",
         "enableLogDetails": true,
         "prettifyLogMessage": false,
         "showCommonLabels": false,
-        "showLabels": false,
+        "showLabels": true,
         "showTime": true,
         "sortOrder": "Descending",
-        "wrapLogMessage": false
+        "wrapLogMessage": true
       },
       "targets": [
         {
@@ -916,20 +801,21 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json",
+          "expr": "{app=\"docutab\"} | json | __error__=\"\" | line_format \"{{.msg}}\" |~ \"(?i)(queue|asynq|task|job)\"",
           "refId": "A"
         }
       ],
-      "title": "Service Logs",
+      "title": "Queue-Related Logs",
       "type": "logs"
     }
   ],
   "refresh": "10s",
   "schemaVersion": 38,
-  "style": "dark",
   "tags": [
     "docutab",
-    "backend"
+    "queues",
+    "database",
+    "storage"
   ],
   "templating": {
     "list": []
@@ -940,8 +826,7 @@
   },
   "timepicker": {},
   "timezone": "",
-  "title": "DocuTab Backend Metrics",
-  "uid": "docutab-backend",
-  "version": 1,
-  "weekStart": ""
+  "title": "DocuTab Queues & Storage",
+  "uid": "docutab-queues-storage",
+  "version": 1
 }
