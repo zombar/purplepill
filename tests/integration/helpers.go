@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -362,6 +363,21 @@ func (ts *TestServices) startPostgres() {
 			ts.t.Log("PostgreSQL container started successfully")
 			// Give it one more second to be fully ready
 			time.Sleep(1 * time.Second)
+
+			// Create dedicated databases for each service
+			ts.t.Log("Creating dedicated databases for services...")
+			databases := []string{"scraper_db", "textanalyzer_db", "controller_db", "scheduler_db"}
+			for _, dbName := range databases {
+				createDBCmd := exec.Command("docker", "exec", ts.postgresContainer, "psql", "-U", "docutab_test", "-c",
+					fmt.Sprintf("CREATE DATABASE %s;", dbName))
+				if output, err := createDBCmd.CombinedOutput(); err != nil {
+					// Database might already exist, that's OK
+					if !strings.Contains(string(output), "already exists") {
+						ts.t.Logf("Note: Failed to create database %s: %v\nOutput: %s", dbName, err, string(output))
+					}
+				}
+			}
+
 			return
 		}
 		time.Sleep(500 * time.Millisecond)

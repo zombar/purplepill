@@ -39,8 +39,8 @@ func TestControllerIntegration(t *testing.T) {
 		t.Log("✗ Ollama is not available - will test graceful degradation")
 	}
 
-	// Get PostgreSQL configuration for scraper
-	pgHost, pgPort, pgUser, pgPass, pgDB := services.GetPostgresConfig()
+	// Get PostgreSQL configuration for services
+	pgHost, pgPort, pgUser, pgPass, _ := services.GetPostgresConfig()
 
 	// Start services in order
 	scraperConfig := ServiceConfig{
@@ -54,7 +54,7 @@ func TestControllerIntegration(t *testing.T) {
 			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
 			"DB_USER=" + pgUser,
 			"DB_PASSWORD=" + pgPass,
-			"DB_NAME=" + pgDB,
+			"DB_NAME=scraper_db",
 		},
 		HealthCheck: scraperURL + "/health",
 	}
@@ -71,7 +71,7 @@ func TestControllerIntegration(t *testing.T) {
 			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
 			"DB_USER=" + pgUser,
 			"DB_PASSWORD=" + pgPass,
-			"DB_NAME=" + pgDB,
+			"DB_NAME=textanalyzer_db",
 		},
 		HealthCheck: textAnalyzerURL + "/health",
 	}
@@ -80,12 +80,16 @@ func TestControllerIntegration(t *testing.T) {
 		Name:        "controller",
 		Port:        18080,
 		BinaryPath:  controllerBin,
-		Env:         []string{
+		Env: []string{
 			"CONTROLLER_PORT=18080",
 			"SCRAPER_BASE_URL=" + scraperURL,
 			"TEXTANALYZER_BASE_URL=" + textAnalyzerURL,
-			"DATABASE_PATH=" + services.GetDBPath("controller"),
 			"REDIS_ADDR=" + services.GetRedisAddr(),
+			"DB_HOST=" + pgHost,
+			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
+			"DB_USER=" + pgUser,
+			"DB_PASSWORD=" + pgPass,
+			"DB_NAME=controller_db",
 		},
 		HealthCheck: controllerURL + "/health",
 	}

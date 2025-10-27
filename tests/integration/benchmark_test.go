@@ -75,8 +75,8 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		t.Log("✗ Ollama is not available - benchmarking without AI features")
 	}
 
-	// Get PostgreSQL configuration for scraper
-	pgHost, pgPort, pgUser, pgPass, pgDB := services.GetPostgresConfig()
+	// Get PostgreSQL configuration for services
+	pgHost, pgPort, pgUser, pgPass, _ := services.GetPostgresConfig()
 
 	scraperConfig := ServiceConfig{
 		Name:        "scraper",
@@ -89,7 +89,7 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
 			"DB_USER=" + pgUser,
 			"DB_PASSWORD=" + pgPass,
-			"DB_NAME=" + pgDB,
+			"DB_NAME=scraper_db",
 		},
 		HealthCheck: benchScraperURL + "/health",
 	}
@@ -106,7 +106,7 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
 			"DB_USER=" + pgUser,
 			"DB_PASSWORD=" + pgPass,
-			"DB_NAME=" + pgDB,
+			"DB_NAME=textanalyzer_db",
 		},
 		HealthCheck: benchTextAnalyzerURL + "/health",
 	}
@@ -115,11 +115,16 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		Name:        "controller",
 		Port:        18080,
 		BinaryPath:  controllerBin,
-		Env:         []string{
+		Env: []string{
 			"CONTROLLER_PORT=18080",
 			"SCRAPER_BASE_URL=" + benchScraperURL,
 			"TEXTANALYZER_BASE_URL=" + benchTextAnalyzerURL,
-			"DATABASE_PATH=" + services.GetDBPath("controller"),
+			"REDIS_ADDR=" + services.GetRedisAddr(),
+			"DB_HOST=" + pgHost,
+			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
+			"DB_USER=" + pgUser,
+			"DB_PASSWORD=" + pgPass,
+			"DB_NAME=controller_db",
 		},
 		HealthCheck: benchControllerURL + "/health",
 	}
