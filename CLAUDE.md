@@ -1,0 +1,2 @@
+- run the relevant unit tests and ensure they pass, add any new required test and fix any broken
+- after every feature commit and push the changes to a branch on each submodule and ask me if I want to merge, then ensure the main branch is commited and pushed create a PR and send me the link
