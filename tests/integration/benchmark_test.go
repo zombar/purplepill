@@ -3,6 +3,7 @@ package integration
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"sync"
@@ -74,12 +75,22 @@ func setupBenchmarkServices(t *testing.T, services *TestServices) {
 		t.Log("✗ Ollama is not available - benchmarking without AI features")
 	}
 
+	// Get PostgreSQL configuration for scraper
+	pgHost, pgPort, pgUser, pgPass, pgDB := services.GetPostgresConfig()
+
 	scraperConfig := ServiceConfig{
 		Name:        "scraper",
 		Port:        18081,
 		BinaryPath:  scraperBin,
-		Args:        []string{"-port", "18081", "-db", services.GetDBPath("scraper")},
-		Env:         []string{"OLLAMA_URL=" + services.GetOllamaURL()},
+		Args:        []string{"-port", "18081"},
+		Env: []string{
+			"OLLAMA_URL=" + services.GetOllamaURL(),
+			"DB_HOST=" + pgHost,
+			"DB_PORT=" + fmt.Sprintf("%d", pgPort),
+			"DB_USER=" + pgUser,
+			"DB_PASSWORD=" + pgPass,
+			"DB_NAME=" + pgDB,
+		},
 		HealthCheck: benchScraperURL + "/health",
 	}
 
