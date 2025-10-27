@@ -457,7 +457,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json | __error__=\"\" | level=~\"error|warn\" or line_format \"{{.msg}}\" |~ \"(?i)(error|exception|fail)\"",
+          "expr": "{app=\"docutab\"} | json | level=~\"error|warn\"",
           "refId": "A"
         }
       ],

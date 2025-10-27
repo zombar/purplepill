@@ -801,7 +801,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json | __error__=\"\" | line_format \"{{.msg}}\" |~ \"(?i)(queue|asynq|task|job)\"",
+          "expr": "{app=\"docutab\"} | json | msg=~\"(?i)(queue|asynq|task|job)\"",
           "refId": "A"
         }
       ],
