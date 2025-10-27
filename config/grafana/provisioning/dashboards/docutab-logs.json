@@ -71,7 +71,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"controller\"} | json |~ \"(?i)error\"",
+          "expr": "{service=\"controller\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -106,7 +106,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"scraper\"} | json |~ \"(?i)error\"",
+          "expr": "{service=\"scraper\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -141,7 +141,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"textanalyzer\"} | json |~ \"(?i)error\"",
+          "expr": "{service=\"textanalyzer\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -176,7 +176,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{service=\"scheduler\"} | json |~ \"(?i)error\"",
+          "expr": "{service=\"scheduler\"} | json | level=\"error\"",
           "refId": "A"
         }
       ],
@@ -262,7 +262,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({app=\"docutab\"} | json |~ \"(?i)error\" [5m])) by (service)",
+          "expr": "sum(count_over_time({app=\"docutab\"} | json | level=\"error\" [5m])) by (service)",
           "refId": "A"
         }
       ],
