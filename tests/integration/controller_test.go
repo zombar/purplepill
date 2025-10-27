@@ -90,6 +90,7 @@ func TestControllerIntegration(t *testing.T) {
 			"DB_USER=" + pgUser,
 			"DB_PASSWORD=" + pgPass,
 			"DB_NAME=controller_db",
+			"MAX_ANALYSIS_WAIT_MINUTES=2", // Prevent tests from hanging waiting for analysis
 		},
 		HealthCheck: controllerURL + "/health",
 	}
