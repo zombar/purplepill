@@ -18,7 +18,7 @@ services:
       - DB_PORT=5432
       - DB_USER=docutab
       - DB_PASSWORD=docutab_dev_pass
-      - DB_NAME=docutab
+      - DB_NAME=textanalyzer_db
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:4b
@@ -72,7 +72,7 @@ services:
       - DB_PORT=5432
       - DB_USER=docutab
       - DB_PASSWORD=docutab_dev_pass
-      - DB_NAME=docutab
+      - DB_NAME=scraper_db
       # - OLLAMA_VISION_MODEL=gemma3:4b
       # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
     volumes:
@@ -126,7 +126,7 @@ services:
       - DB_PORT=5432
       - DB_USER=docutab
       - DB_PASSWORD=docutab_dev_pass
-      - DB_NAME=docutab
+      - DB_NAME=controller_db
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
       # Web interface URL for footer links on static pages
@@ -223,7 +223,7 @@ services:
       - DB_PORT=5432
       - DB_USER=docutab
       - DB_PASSWORD=docutab_dev_pass
-      - DB_NAME=docutab
+      - DB_NAME=scheduler_db
       - CONTROLLER_BASE_URL=http://controller:8080
       - SCRAPER_URL=http://scraper:8080
       - TEMPO_ENDPOINT=tempo:4317
@@ -307,6 +307,7 @@ services:
       - postgres-logs:/var/log/postgresql
       - ./config/postgres/dev.conf:/etc/postgresql/dev.conf:ro
       - ./config/postgres/staging.conf:/etc/postgresql/staging.conf:ro
+      - ./config/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
     command: postgres -c config_file=/etc/postgresql/dev.conf
     restart: unless-stopped
     healthcheck:
