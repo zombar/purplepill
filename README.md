@@ -103,7 +103,7 @@ The Controller service provides public-facing endpoints for serving SEO-optimize
 - Go 1.21 or higher
 - Docker and Docker Compose (for containerized deployment)
 - [Ollama](https://ollama.ai) (for AI-powered features)
-- GCC (required for SQLite CGO compilation)
+- PostgreSQL 16 or higher
 - **Note**: On Apple Silicon (ARM64), Asynqmon runs with x86_64 emulation via Docker (no native ARM64 build available)
 
 ### Ollama Setup
@@ -194,24 +194,31 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 - `SCRAPER_BASE_URL` - Scraper service URL (default: http://scraper:8080)
 - `TEXTANALYZER_BASE_URL` - TextAnalyzer service URL (default: http://textanalyzer:8080)
 - `SCHEDULER_BASE_URL` - Scheduler service URL (default: http://scheduler:8080)
-- `DATABASE_PATH` - SQLite database path
 - **`REDIS_ADDR` - Redis server address for task queue (default: redis:6379)**
 - **`WORKER_CONCURRENCY` - Number of concurrent queue workers (default: 10)**
 - `LINK_SCORE_THRESHOLD` - Minimum URL quality score 0.0-1.0 (default: 0.5)
 
 **Scraper:**
 - `PORT` - HTTP server port
-- `DB_PATH` - SQLite database path
 - `STORAGE_BASE_PATH` - Base path for filesystem storage (default: ./storage)
 - `OLLAMA_URL` - Ollama API URL
 - `OLLAMA_MODEL` - Ollama model name
 
 **TextAnalyzer:**
 - `PORT` - HTTP server port
-- `DB_PATH` - SQLite database path
 - `USE_OLLAMA` - Enable/disable Ollama integration (true/false)
 - `OLLAMA_URL` - Ollama API URL
 - `OLLAMA_MODEL` - Ollama model name
+
+**PostgreSQL (shared by all services):**
+- `DB_HOST` - PostgreSQL host (default: postgres)
+- `DB_PORT` - PostgreSQL port (default: 5432)
+- `DB_USER` - Database user (default: docutab)
+- `DB_PASSWORD` - Database password (default: docutab_dev_pass)
+- `DB_NAME` - Database name (default: docutab)
+- `DB_MAX_OPEN_CONNS` - Maximum open connections (default: 25)
+- `DB_MAX_IDLE_CONNS` - Maximum idle connections (default: 5)
+- `DB_CONN_MAX_LIFETIME` - Connection max lifetime (default: 5m)
 
 **Web:**
 - `CONTROLLER_API_URL` - Controller API URL (default: http://localhost:9080)
@@ -442,12 +449,14 @@ See [tests/integration/README.md](tests/integration/README.md) for detailed docu
 
 ### Database
 
-All services use SQLite by default with migration systems for schema management. The codebase is designed for easy PostgreSQL migration for production deployments.
+All services use PostgreSQL 16 with automatic schema migrations. The shared database package (`pkg/database`) provides:
+- OpenTelemetry instrumentation for database queries and connections
+- Connection pooling with configurable limits
+- Automatic retry and health checks
+- Unified configuration across all services
 
-To migrate to PostgreSQL:
-1. Update database connection strings in service configurations
-2. Modify SQL migration syntax (AUTOINCREMENT → SERIAL, DATETIME → TIMESTAMP)
-3. Add PostgreSQL driver dependencies
+**Database Configuration:**
+Services connect to a shared PostgreSQL instance using environment variables. See the Configuration section above for details.
 
 ## Project Stats
 
@@ -487,11 +496,12 @@ Run `make test` for unit tests, `make test-integration` for integration tests, o
 
 ## Production Considerations
 
-- **Database**: Migrate to PostgreSQL for multi-instance deployments
+- **Database**: PostgreSQL 16 is used for all services with connection pooling and instrumentation
 - **Service Discovery**: Use environment variables or service mesh
-- **Observability**: Prometheus metrics and Grafana dashboards are included; configure alerting for production
+- **Observability**: Prometheus metrics, Grafana dashboards, Tempo tracing, and Loki logging are included; configure alerting for production
 - **Security**: Implement authentication, rate limiting, and HTTPS
 - **Scaling**: Deploy services independently based on load
+- **Database Tuning**: Adjust PostgreSQL configuration based on workload (see `config/postgres/staging.conf` for production settings)
 
 ## License
 
