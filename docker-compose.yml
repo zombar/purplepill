@@ -58,15 +58,19 @@ services:
       - "9081:8080"
     environment:
       - PORT=8080
-      - DB_PATH=/app/data/scraper.db
       - STORAGE_BASE_PATH=/app/storage
       - OLLAMA_URL=http://100.64.0.2:11434
       - OLLAMA_MODEL=gemma3:12b
       - TEMPO_ENDPOINT=tempo:4317
+      # PostgreSQL configuration
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=docutab
+      - DB_PASSWORD=docutab_dev_pass
+      - DB_NAME=docutab
       # - OLLAMA_VISION_MODEL=gemma3.12b
       # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
     volumes:
-      - scraper-data:/app/data
       - scraper-storage:/app/storage
     command: [
       "./scraper-api",
@@ -86,8 +90,12 @@ services:
     networks:
       - docutab-network
     depends_on:
-      - loki
-      - tempo
+      postgres:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
 
   # Controller Service
   controller:
@@ -444,8 +452,6 @@ services:
 
 volumes:
   controller-data:
-    driver: local
-  scraper-data:
     driver: local
   scraper-storage:
     driver: local
