@@ -522,8 +522,8 @@ func testTagSearch(t *testing.T) {
 
 // testRequestRetrieval tests GET /requests/{id} and GET /requests endpoints
 func testRequestRetrieval(t *testing.T) {
-	// First, create a request
-	testText := "Sample text for retrieval testing."
+	// First, create a request with unique text (timestamp ensures uniqueness)
+	testText := fmt.Sprintf("Sample text for retrieval testing at %d.", time.Now().UnixNano())
 
 	reqBody := map[string]interface{}{
 		"text": testText,
@@ -540,14 +540,24 @@ func testRequestRetrieval(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
+	// Read response body first for debugging
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		t.Fatalf("Failed to read response body: %v", err)
+	}
+
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusAccepted {
+		t.Fatalf("Expected status 200, 201, or 202, got %d. Response: %s", resp.StatusCode, string(respBody))
+	}
+
 	var createResult map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&createResult); err != nil {
-		t.Fatalf("Failed to decode response: %v", err)
+	if err := json.Unmarshal(respBody, &createResult); err != nil {
+		t.Fatalf("Failed to decode response: %v. Body: %s", err, string(respBody))
 	}
 
 	requestID, ok := createResult["id"].(string)
 	if !ok {
-		t.Fatal("id is not a string")
+		t.Fatalf("id is not a string. Response: %+v", createResult)
 	}
 
 	// Test GET /requests/{id}
