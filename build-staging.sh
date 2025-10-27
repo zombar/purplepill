@@ -50,7 +50,7 @@ if [ "$PUSH" = "push" ]; then
                 --build-arg VITE_PUBLIC_URL_BASE=https://docutab.honker \
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
-                --build-arg VITE_ASYNQ_URL=https://docutab.honker/asynq \
+                --build-arg VITE_ASYNQ_URL=http://honker:9084 \
                 -t $REGISTRY/docutab-$service:staging \
                 -f $dockerfile \
                 . \
@@ -82,7 +82,7 @@ else
                 --build-arg VITE_PUBLIC_URL_BASE=https://docutab.honker \
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
-                --build-arg VITE_ASYNQ_URL=https://docutab.honker/asynq \
+                --build-arg VITE_ASYNQ_URL=http://honker:9084 \
                 -t docutab-$service:staging \
                 -f $dockerfile \
                 . \
