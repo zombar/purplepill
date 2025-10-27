@@ -43,6 +43,11 @@ services:
       # Observability
       - TEMPO_ENDPOINT=tempo:4317
 
+      # Queue configuration
+      - REDIS_ADDR=redis:6379
+      - WORKER_CONCURRENCY=10
+      - MAX_LINK_DEPTH=1
+
       # Port
       - CONTROLLER_PORT=8080
     ports:
@@ -56,6 +61,17 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      scraper:
+        condition: service_healthy
+      textanalyzer:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
     networks:
       - docutab-network
       - proxy
@@ -91,7 +107,18 @@ services:
     volumes:
       - scraper-data:/app/data
       - scraper-storage:/app/storage
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     restart: unless-stopped
+    depends_on:
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
     networks:
       - docutab-network
       - proxy
@@ -116,6 +143,10 @@ services:
       # Database
       - DATABASE_PATH=/data/textanalyzer.db
 
+      # Queue configuration
+      - REDIS_ADDR=redis:6379
+      - WORKER_CONCURRENCY=5
+
       # Observability
       - TEMPO_ENDPOINT=tempo:4317
 
@@ -125,7 +156,20 @@ services:
       - "9082:8080"  # Optional: expose if you need direct access for debugging
     volumes:
       - textanalyzer-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
     networks:
       - docutab-network
       - proxy
@@ -145,8 +189,12 @@ services:
       # Controller URL (internal)
       - CONTROLLER_BASE_URL=http://controller:8080
 
+      # Scraper URL
+      - SCRAPER_URL=http://scraper:8080
+
       # Database
       - DATABASE_PATH=/app/data/scheduler.db
+      - CONTROLLER_DB_PATH=/app/controller-data/controller.db
 
       # Observability
       - TEMPO_ENDPOINT=tempo:4317
@@ -161,7 +209,58 @@ services:
       - "9083:8080"  # Optional: expose if you need direct access for debugging
     volumes:
       - scheduler-data:/app/data
+      - controller-data:/app/controller-data:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
+    depends_on:
+      controller:
+        condition: service_healthy
+      scraper:
+        condition: service_healthy
+      loki:
+        condition: service_started
+      tempo:
+        condition: service_started
+    networks:
+      - docutab-network
+
+  # Redis - Message queue backend
+  redis:
+    image: redis:7-alpine
+    container_name: docutab-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --save 60 1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - docutab-network
+
+  # Asynqmon - Queue monitoring UI
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: docutab-asynqmon
+    platform: linux/amd64  # Force x86_64 for ARM64 compatibility
+    ports:
+      - "9084:8080"
+    environment:
+      - REDIS_ADDR=redis:6379
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
     networks:
       - docutab-network
 
@@ -335,6 +434,8 @@ volumes:
   textanalyzer-data:
     driver: local
   scheduler-data:
+    driver: local
+  redis-data:
     driver: local
   loki-data:
     driver: local

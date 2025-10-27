@@ -49,6 +49,9 @@ jobs:
       - name: Run tests
         run: npm test
 
+      - name: Run tracing tests
+        run: npm test -- tracing.test.js --run
+
       - name: Run Timeline regression tests
         run: |
           echo "Running Timeline selection stability tests..."

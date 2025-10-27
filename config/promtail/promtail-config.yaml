@@ -57,3 +57,103 @@ scrape_configs:
       # Extract log stream (stdout/stderr)
       - source_labels: ['__meta_docker_container_log_stream']
         target_label: 'stream'
+
+    # Pipeline stages to parse JSON logs and extract structured fields
+    pipeline_stages:
+      # Parse JSON logs
+      - json:
+          expressions:
+            timestamp: time
+            level: level
+            message: msg
+            trace_id: trace_id
+            span_id: span_id
+            method: method
+            path: path
+            status: status
+            duration_ms: duration_ms
+            error: error
+            service: service
+            component: component
+            app: app
+
+      # Extract trace_id as a label for correlation with Tempo
+      - labels:
+          trace_id:
+          span_id:
+
+      # Extract level as a label for filtering
+      - labels:
+          level:
+
+      # Set timestamp from log entry if available
+      - timestamp:
+          source: timestamp
+          format: RFC3339
+
+  # Scrape PostgreSQL JSON logs
+  - job_name: postgresql
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: postgresql
+          app: docutab
+          service: postgres
+          environment: staging
+          __path__: /var/log/postgresql/*.json
+
+    pipeline_stages:
+      # Parse PostgreSQL JSON log format
+      - json:
+          expressions:
+            timestamp: timestamp
+            user_name: user_name
+            database_name: database_name
+            process_id: process_id
+            connection_from: connection_from
+            session_id: session_id
+            session_line_num: session_line_num
+            command_tag: command_tag
+            session_start_time: session_start_time
+            virtual_transaction_id: virtual_transaction_id
+            transaction_id: transaction_id
+            error_severity: error_severity
+            sql_state_code: sql_state_code
+            message: message
+            detail: detail
+            hint: hint
+            query: query
+            query_pos: query_pos
+            application_name: application_name
+            backend_type: backend_type
+
+      # Extract error_severity as level label for filtering
+      - labels:
+          level: error_severity
+
+      # Extract database name as label
+      - labels:
+          database: database_name
+
+      # Extract user name as label
+      - labels:
+          db_user: user_name
+
+      # Extract application name as label
+      - labels:
+          application_name:
+
+      # Extract backend type as label
+      - labels:
+          backend_type:
+
+      # Set timestamp from PostgreSQL log entry
+      - timestamp:
+          source: timestamp
+          format: '2006-01-02 15:04:05.000 MST'
+
+      # Format the output message to include key context
+      - template:
+          source: output
+          template: '{{ if .query }}[{{ .command_tag }}] {{ .message }} | Query: {{ .query }}{{ else }}{{ .message }}{{ end }}{{ if .detail }} | Detail: {{ .detail }}{{ end }}{{ if .hint }} | Hint: {{ .hint }}{{ end }}'

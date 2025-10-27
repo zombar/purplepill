@@ -1,11 +1,15 @@
 package metrics
 
 import (
+	"context"
 	"database/sql"
 	"net/http"
+	"strconv"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Handler returns an HTTP handler for Prometheus metrics endpoint
@@ -205,6 +209,40 @@ func NewBusinessMetrics(serviceName string) *BusinessMetrics {
 	return m
 }
 
+// ObserveDurationWithExemplar records a duration observation with an exemplar linking to the current trace.
+// This enables jumping from Grafana metrics to Tempo traces for correlated analysis.
+// If no trace context is available, it falls back to a regular observation.
+func (m *BusinessMetrics) ObserveDurationWithExemplar(ctx context.Context, histogram *prometheus.HistogramVec, duration float64, labels ...string) {
+	if histogram == nil {
+		return
+	}
+
+	// Extract trace context from the request
+	span := trace.SpanFromContext(ctx)
+	if !span.SpanContext().IsValid() {
+		// No trace context, record without exemplar
+		histogram.WithLabelValues(labels...).Observe(duration)
+		return
+	}
+
+	// Get trace ID for the exemplar
+	traceID := span.SpanContext().TraceID().String()
+
+	// Create exemplar with trace ID
+	exemplar := prometheus.Labels{
+		"trace_id": traceID,
+	}
+
+	// Record observation with exemplar
+	observer := histogram.WithLabelValues(labels...)
+	if exemplarObserver, ok := observer.(prometheus.ExemplarObserver); ok {
+		exemplarObserver.ObserveWithExemplar(duration, exemplar)
+	} else {
+		// Fallback if ExemplarObserver interface not available
+		observer.Observe(duration)
+	}
+}
+
 // DatabaseMetrics contains database-related metrics
 type DatabaseMetrics struct {
 	ConnectionsOpen    prometheus.Gauge
@@ -302,90 +340,130 @@ func (m *DatabaseMetrics) UpdateDBStats(db *sql.DB) {
 	m.WaitDuration.Add(stats.WaitDuration.Seconds())
 }
 
+var (
+	httpMetricsOnce          sync.Once
+	httpRequestsTotal        *prometheus.CounterVec
+	httpRequestDuration      *prometheus.HistogramVec
+	httpRequestSize          *prometheus.HistogramVec
+	httpResponseSize         *prometheus.HistogramVec
+	httpRequestsActiveByService = make(map[string]prometheus.Gauge)
+	httpRequestsActiveMutex     sync.Mutex
+)
+
 // HTTPMiddleware wraps an HTTP handler with Prometheus metrics
 func HTTPMiddleware(serviceName string) func(http.Handler) http.Handler {
-	// Create metrics
-	httpRequestsTotal := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "Total number of HTTP requests",
-			ConstLabels: prometheus.Labels{
-				"app": "docutab",
+	// Register shared metrics only once
+	httpMetricsOnce.Do(func() {
+		httpRequestsTotal = prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name: "http_requests_total",
+				Help: "Total number of HTTP requests",
 			},
-		},
-		[]string{"service", "method", "path", "status"},
-	)
+			[]string{"service", "method", "path", "status"},
+		)
 
-	httpRequestDuration := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "HTTP request duration in seconds",
-			Buckets: prometheus.DefBuckets,
-			ConstLabels: prometheus.Labels{
-				"app": "docutab",
+		httpRequestDuration = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "http_request_duration_seconds",
+				Help:    "HTTP request duration in seconds",
+				Buckets: prometheus.DefBuckets,
 			},
-		},
-		[]string{"service", "method", "path", "status"},
-	)
+			[]string{"service", "method", "path", "status"},
+		)
 
-	httpRequestSize := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_request_size_bytes",
-			Help:    "HTTP request size in bytes",
-			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
-			ConstLabels: prometheus.Labels{
-				"app": "docutab",
+		httpRequestSize = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "http_request_size_bytes",
+				Help:    "HTTP request size in bytes",
+				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-		},
-		[]string{"service", "method", "path"},
-	)
+			[]string{"service", "method", "path"},
+		)
 
-	httpResponseSize := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "http_response_size_bytes",
-			Help:    "HTTP response size in bytes",
-			Buckets: prometheus.ExponentialBuckets(100, 10, 8),
-			ConstLabels: prometheus.Labels{
-				"app": "docutab",
+		httpResponseSize = prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:    "http_response_size_bytes",
+				Help:    "HTTP response size in bytes",
+				Buckets: prometheus.ExponentialBuckets(100, 10, 8),
 			},
-		},
-		[]string{"service", "method", "path"},
-	)
+			[]string{"service", "method", "path"},
+		)
 
-	httpRequestsActive := prometheus.NewGauge(
-		prometheus.GaugeOpts{
-			Name: "http_requests_active",
-			Help: "Number of HTTP requests currently being served",
-			ConstLabels: prometheus.Labels{
-				"service": serviceName,
-				"app":     "docutab",
+		prometheus.MustRegister(httpRequestsTotal)
+		prometheus.MustRegister(httpRequestDuration)
+		prometheus.MustRegister(httpRequestSize)
+		prometheus.MustRegister(httpResponseSize)
+	})
+
+	// Create per-service active requests gauge
+	httpRequestsActiveMutex.Lock()
+	httpRequestsActive, exists := httpRequestsActiveByService[serviceName]
+	if !exists {
+		httpRequestsActive = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "http_requests_active",
+				Help: "Number of HTTP requests currently being served",
+				ConstLabels: prometheus.Labels{
+					"service": serviceName,
+					"app":     "docutab",
+				},
 			},
-		},
-	)
-
-	// Register metrics
-	prometheus.MustRegister(httpRequestsTotal)
-	prometheus.MustRegister(httpRequestDuration)
-	prometheus.MustRegister(httpRequestSize)
-	prometheus.MustRegister(httpResponseSize)
-	prometheus.MustRegister(httpRequestsActive)
+		)
+		prometheus.MustRegister(httpRequestsActive)
+		httpRequestsActiveByService[serviceName] = httpRequestsActive
+	}
+	httpRequestsActiveMutex.Unlock()
 
 	return func(next http.Handler) http.Handler {
-		return promhttp.InstrumentHandlerInFlight(
-			httpRequestsActive,
-			promhttp.InstrumentHandlerCounter(
-				httpRequestsTotal.MustCurryWith(prometheus.Labels{"service": serviceName}),
-				promhttp.InstrumentHandlerDuration(
-					httpRequestDuration.MustCurryWith(prometheus.Labels{"service": serviceName}),
-					promhttp.InstrumentHandlerRequestSize(
-						httpRequestSize.MustCurryWith(prometheus.Labels{"service": serviceName}),
-						promhttp.InstrumentHandlerResponseSize(
-							httpResponseSize.MustCurryWith(prometheus.Labels{"service": serviceName}),
-							next,
-						),
-					),
-				),
-			),
-		)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Increment active requests
+			httpRequestsActive.Inc()
+			defer httpRequestsActive.Dec()
+
+			// Record request size
+			if r.ContentLength > 0 {
+				httpRequestSize.WithLabelValues(serviceName, r.Method, r.URL.Path).Observe(float64(r.ContentLength))
+			}
+
+			// Create response writer wrapper to capture status code and size
+			wrapped := &responseWriter{
+				ResponseWriter: w,
+				statusCode:     http.StatusOK,
+				size:           0,
+			}
+
+			// Start timer
+			start := prometheus.NewTimer(prometheus.ObserverFunc(func(v float64) {
+				status := strconv.Itoa(wrapped.statusCode)
+				httpRequestDuration.WithLabelValues(serviceName, r.Method, r.URL.Path, status).Observe(v)
+			}))
+			defer start.ObserveDuration()
+
+			// Call next handler
+			next.ServeHTTP(wrapped, r)
+
+			// Record metrics
+			status := strconv.Itoa(wrapped.statusCode)
+			httpRequestsTotal.WithLabelValues(serviceName, r.Method, r.URL.Path, status).Inc()
+			httpResponseSize.WithLabelValues(serviceName, r.Method, r.URL.Path).Observe(float64(wrapped.size))
+		})
 	}
+}
+
+// responseWriter wraps http.ResponseWriter to capture status code and response size
+type responseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	size       int
+}
+
+func (rw *responseWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (rw *responseWriter) Write(b []byte) (int, error) {
+	n, err := rw.ResponseWriter.Write(b)
+	rw.size += n
+	return n, err
 }

@@ -26,6 +26,8 @@ help: ## Display this help message
 	@echo "  test-integration-short - Run integration tests (skip benchmarks)"
 	@echo "  test-benchmark         - Run performance/load benchmarks"
 	@echo "  test-all               - Run all tests (unit + integration)"
+	@echo "  test-trace             - Run trace propagation tests"
+	@echo "  test-trace-e2e         - Run E2E trace flow tests"
 	@echo ""
 	@echo "Docker commands:"
 	@echo "  docker-build           - Build all Docker images"
@@ -176,6 +178,8 @@ lint: ## Lint code for all services
 docker-build: ## Build all Docker images
 	@echo "Running full test suite before building..."
 	@$(MAKE) test
+	@echo "Running trace propagation tests..."
+	@$(MAKE) test-trace
 	@echo "✅ All tests passed! Proceeding with Docker build..."
 	@docker compose build
 	@echo "All Docker images built!"
@@ -215,6 +219,9 @@ docker-rebuild: ## Rebuild and restart all services
 	@echo "Running full test suite before rebuild..."
 	@$(MAKE) test
 	@echo ""
+	@echo "Running trace propagation tests..."
+	@$(MAKE) test-trace
+	@echo ""
 	@echo "Running Timeline regression tests..."
 	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
 	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
@@ -241,6 +248,9 @@ docker-staging-build: ## Build all service images for staging
 	@echo "Running full test suite before staging build..."
 	@$(MAKE) test
 	@echo ""
+	@echo "Running trace propagation tests..."
+	@$(MAKE) test-trace
+	@echo ""
 	@echo "Running Timeline regression tests..."
 	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
 	@cd $(WEB_DIR) && npm test -- Timeline.regressionSuite.test.jsx --run
@@ -250,6 +260,9 @@ docker-staging-build: ## Build all service images for staging
 docker-staging-push: ## Build and push all images to ghcr.io/zombar
 	@echo "Running full test suite before staging push..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running trace propagation tests..."
+	@$(MAKE) test-trace
 	@echo ""
 	@echo "Running Timeline regression tests..."
 	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
@@ -261,6 +274,9 @@ docker-staging-deploy: ## Full local deploy: build and start all services (dev m
 	@echo "🚀 Deploying to staging..."
 	@echo "Running full test suite before deployment..."
 	@$(MAKE) test
+	@echo ""
+	@echo "Running trace propagation tests..."
+	@$(MAKE) test-trace
 	@echo ""
 	@echo "Running Timeline regression tests..."
 	@cd $(WEB_DIR) && npm test -- Timeline.selectionStability.test.jsx --run
@@ -555,7 +571,7 @@ submodule-init: ## Initialize submodules (first time setup)
 	@echo "Submodules initialized!"
 
 # Check target - run all quality checks
-check: fmt lint test ## Run all checks (fmt, lint, test)
+check: fmt lint test test-trace ## Run all checks (fmt, lint, test, trace tests)
 	@echo "All checks passed!"
 
 # ==================== Integration Tests ====================
@@ -578,6 +594,19 @@ test-benchmark: ## Run load/performance benchmarks (requires BENCHMARK=true)
 
 test-all: test test-integration ## Run all tests (unit + integration)
 	@echo "All tests completed!"
+
+test-trace: ## Run trace propagation tests for all services
+	@echo "Running trace propagation tests..."
+	@$(MAKE) -C $(CONTROLLER_DIR) test-trace
+	@$(MAKE) -C $(TEXTANALYZER_DIR) test-trace
+	@cd $(WEB_DIR) && npm test -- tracing.test.js --run
+	@echo "All trace tests completed!"
+
+test-trace-e2e: ## Run E2E trace flow tests for all services
+	@echo "Running E2E trace flow tests..."
+	@$(MAKE) -C $(CONTROLLER_DIR) test-trace-e2e
+	@$(MAKE) -C $(TEXTANALYZER_DIR) test-trace-e2e
+	@echo "All E2E trace tests completed!"
 
 # Development workflow - build and start all services locally
 dev: build ## Build and run all services locally (non-Docker)
