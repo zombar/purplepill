@@ -24,14 +24,14 @@ type ServiceConfig struct {
 
 // TestServices manages the lifecycle of test services
 type TestServices struct {
-	t                *testing.T
-	processes        map[string]*exec.Cmd
-	ollamaUp         bool
-	tempDBDir        string
-	mockOllama       *MockOllamaServer
-	mockOllamaPort   int
-	redisContainer   string
-	redisPort        int
+	t                 *testing.T
+	processes         map[string]*exec.Cmd
+	ollamaUp          bool
+	tempDBDir         string
+	mockOllama        *MockOllamaServer
+	mockOllamaPort    int
+	redisContainer    string
+	redisPort         int
 	postgresContainer string
 	postgresPort      int
 }
@@ -368,6 +368,14 @@ func (ts *TestServices) startPostgres() {
 			ts.t.Log("Creating dedicated databases for services...")
 			databases := []string{"scraper_db", "textanalyzer_db", "controller_db", "scheduler_db"}
 			for _, dbName := range databases {
+				// Drop database if it exists to ensure clean state
+				dropDBCmd := exec.Command("docker", "exec", ts.postgresContainer, "psql", "-U", "docutab_test", "-c",
+					fmt.Sprintf("DROP DATABASE IF EXISTS %s;", dbName))
+				if output, err := dropDBCmd.CombinedOutput(); err != nil {
+					ts.t.Logf("Note: Failed to drop database %s: %v\nOutput: %s", dbName, err, string(output))
+				}
+
+				// Create fresh database
 				createDBCmd := exec.Command("docker", "exec", ts.postgresContainer, "psql", "-U", "docutab_test", "-c",
 					fmt.Sprintf("CREATE DATABASE %s;", dbName))
 				if output, err := createDBCmd.CombinedOutput(); err != nil {
