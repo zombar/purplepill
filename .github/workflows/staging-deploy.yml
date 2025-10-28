@@ -2,7 +2,7 @@ name: Staging Deploy
 
 on:
   push:
-    branches: [ honker ]
+    branches: [ honker, main ]
 
 permissions:
   contents: read
@@ -179,6 +179,7 @@ jobs:
   # Build and push staging images after tests pass
   build-and-push:
     runs-on: ubuntu-latest
+    environment: CI
     needs: [test-controller, test-scraper, test-textanalyzer, test-scheduler, test-web]
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     steps:
@@ -195,7 +196,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push all staging images
         run: |

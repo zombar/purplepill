@@ -37,4 +37,4 @@ services:
         # Build-time environment variables for React
         # Note: Vite requires VITE_ prefix for env vars to be exposed to client
         - VITE_PUBLIC_URL_BASE=https://docutab.honker
-        - VITE_CONTROLLER_API_URL=
+        - VITE_CONTROLLER_API_URL=/api
