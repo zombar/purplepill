@@ -179,6 +179,7 @@ jobs:
   # Build and push staging images after tests pass
   build-and-push:
     runs-on: ubuntu-latest
+    environment: CI
     needs: [test-controller, test-scraper, test-textanalyzer, test-scheduler, test-web]
     if: always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     steps:
