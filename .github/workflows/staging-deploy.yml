@@ -2,7 +2,7 @@ name: Staging Deploy
 
 on:
   push:
-    branches: [ honker ]
+    branches: [ honker, main ]
 
 permissions:
   contents: read
