@@ -35,7 +35,7 @@ fi
 
 # Build all images
 if [ "$PUSH" = "push" ]; then
-    echo "📦 Building and pushing multi-platform images (amd64, arm64)..."
+    echo "📦 Building and pushing images for amd64..."
     echo "   Registry: $REGISTRY"
     echo ""
 
@@ -46,7 +46,7 @@ if [ "$PUSH" = "push" ]; then
         if [ "$service" = "web" ]; then
             # Web service needs build args
             docker buildx build \
-                --platform linux/amd64,linux/arm64 \
+                --platform linux/amd64 \
                 --build-arg VITE_PUBLIC_URL_BASE=https://docutab.honker \
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutab.honker/grafana \
@@ -57,7 +57,7 @@ if [ "$PUSH" = "push" ]; then
                 --push
         else
             docker buildx build \
-                --platform linux/amd64,linux/arm64 \
+                --platform linux/amd64 \
                 -t $REGISTRY/docutab-$service:staging \
                 -f $dockerfile \
                 . \
