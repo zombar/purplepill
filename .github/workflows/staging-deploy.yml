@@ -67,6 +67,9 @@ jobs:
       - name: Run tests
         run: make test
 
+      - name: Run trace tests
+        run: make test-trace
+
   # Test Go scraper app
   test-scraper:
     needs: detect-changes
@@ -120,6 +123,9 @@ jobs:
 
       - name: Run tests
         run: make test
+
+      - name: Run trace tests
+        run: make test-trace
 
   # Test Go scheduler app
   test-scheduler:
@@ -175,6 +181,9 @@ jobs:
 
       - name: Run tests
         run: npm test
+
+      - name: Run trace tests
+        run: npm test -- tracing.test.js --run
 
   # Build and push staging images after tests pass
   build-and-push:
