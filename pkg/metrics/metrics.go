@@ -36,10 +36,18 @@ type BusinessMetrics struct {
 	TombstonesPending      prometheus.Gauge       // Current number of tombstoned items awaiting deletion
 	TombstoneDaysHistogram *prometheus.HistogramVec // Distribution of tombstone periods by reason
 
+	// Document metrics (controller)
+	DocumentsTotal     *prometheus.GaugeVec // Total documents by source_type
+	DocumentsWithTags  prometheus.Gauge     // Documents with at least one tag
+	UniqueTagsTotal    prometheus.Gauge     // Total unique tags across all documents
+	DocumentsWithSEO   prometheus.Gauge     // Documents with SEO enabled
+
 	// Scraper metrics
 	ScrapesCompletedTotal *prometheus.CounterVec
 	LinksExtractedTotal   prometheus.Counter
 	ImagesProcessedTotal  prometheus.Counter
+	ImagesTotalStored     prometheus.Gauge     // Total images currently stored
+	ImagesStorageBytes    prometheus.Gauge     // Total storage size in bytes for images
 	OllamaRequestsTotal   *prometheus.CounterVec
 	ScrapeDuration        *prometheus.HistogramVec
 
@@ -121,6 +129,37 @@ func NewBusinessMetrics(serviceName string) *BusinessMetrics {
 		prometheus.MustRegister(m.TombstonesPending)
 		prometheus.MustRegister(m.TombstoneDaysHistogram)
 
+		// Document metrics
+		m.DocumentsTotal = prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Name: "docutab_documents_total",
+				Help: "Total number of documents by source type",
+			},
+			[]string{"source_type"}, // url, text
+		)
+		m.DocumentsWithTags = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_documents_with_tags",
+				Help: "Number of documents with at least one tag",
+			},
+		)
+		m.UniqueTagsTotal = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_unique_tags_total",
+				Help: "Total number of unique tags across all documents",
+			},
+		)
+		m.DocumentsWithSEO = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_documents_seo_enabled",
+				Help: "Number of documents with SEO enabled",
+			},
+		)
+		prometheus.MustRegister(m.DocumentsTotal)
+		prometheus.MustRegister(m.DocumentsWithTags)
+		prometheus.MustRegister(m.UniqueTagsTotal)
+		prometheus.MustRegister(m.DocumentsWithSEO)
+
 	case "scraper":
 		m.ScrapesCompletedTotal = prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -156,9 +195,23 @@ func NewBusinessMetrics(serviceName string) *BusinessMetrics {
 			},
 			[]string{"status"},
 		)
+		m.ImagesTotalStored = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_images_stored_total",
+				Help: "Total number of images currently stored",
+			},
+		)
+		m.ImagesStorageBytes = prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Name: "docutab_images_storage_bytes",
+				Help: "Total storage size in bytes for all images",
+			},
+		)
 		prometheus.MustRegister(m.ScrapesCompletedTotal)
 		prometheus.MustRegister(m.LinksExtractedTotal)
 		prometheus.MustRegister(m.ImagesProcessedTotal)
+		prometheus.MustRegister(m.ImagesTotalStored)
+		prometheus.MustRegister(m.ImagesStorageBytes)
 		prometheus.MustRegister(m.OllamaRequestsTotal)
 		prometheus.MustRegister(m.ScrapeDuration)
 
