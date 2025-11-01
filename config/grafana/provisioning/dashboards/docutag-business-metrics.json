@@ -294,7 +294,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_scrape_requests_total[5m])) * 300",
+          "expr": "sum(rate(docutag_scrape_requests_total[5m])) * 300",
           "refId": "A"
         }
       ],
@@ -361,7 +361,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "docutab_queue_length",
+          "expr": "docutag_queue_length",
           "refId": "A"
         }
       ],
@@ -415,7 +415,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "docutab_scrape_jobs_by_status",
+          "expr": "docutag_scrape_jobs_by_status",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -504,7 +504,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_scrape_jobs_total[5m])) by (type)",
+          "expr": "sum(rate(docutag_scrape_jobs_total[5m])) by (type)",
           "legendFormat": "{{type}}",
           "refId": "A"
         }
@@ -577,7 +577,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_scrapes_completed_total[1h]))",
+          "expr": "sum(increase(docutag_scrapes_completed_total[1h]))",
           "refId": "A"
         }
       ],
@@ -636,7 +636,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_links_extracted_total[1h]))",
+          "expr": "sum(increase(docutag_links_extracted_total[1h]))",
           "refId": "A"
         }
       ],
@@ -695,7 +695,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_images_processed_total[1h]))",
+          "expr": "sum(increase(docutag_images_processed_total[1h]))",
           "refId": "A"
         }
       ],
@@ -783,7 +783,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_ollama_requests_total[5m])) by (type, status)",
+          "expr": "sum(rate(docutag_ollama_requests_total[5m])) by (type, status)",
           "legendFormat": "{{type}} - {{status}}",
           "refId": "A"
         }
@@ -872,7 +872,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(docutab_scrape_duration_seconds_bucket[5m])) by (status, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(docutag_scrape_duration_seconds_bucket[5m])) by (status, le))",
           "legendFormat": "{{status}} p99",
           "refId": "A"
         },
@@ -881,7 +881,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(docutab_scrape_duration_seconds_bucket[5m])) by (status, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(docutag_scrape_duration_seconds_bucket[5m])) by (status, le))",
           "legendFormat": "{{status}} p50",
           "refId": "B"
         }
@@ -970,7 +970,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_scrapes_completed_total[5m])) by (status)",
+          "expr": "sum(rate(docutag_scrapes_completed_total[5m])) by (status)",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -1043,7 +1043,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_analyses_total[1h]))",
+          "expr": "sum(increase(docutag_analyses_total[1h]))",
           "refId": "A"
         }
       ],
@@ -1102,7 +1102,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_tags_generated_total[1h]))",
+          "expr": "sum(increase(docutag_tags_generated_total[1h]))",
           "refId": "A"
         }
       ],
@@ -1161,7 +1161,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_synopsis_generated_total[1h]))",
+          "expr": "sum(increase(docutag_synopsis_generated_total[1h]))",
           "refId": "A"
         }
       ],
@@ -1249,7 +1249,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(docutab_analysis_duration_seconds_bucket[5m])) by (status, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(docutag_analysis_duration_seconds_bucket[5m])) by (status, le))",
           "legendFormat": "{{status}} p99",
           "refId": "A"
         },
@@ -1258,7 +1258,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(docutab_analysis_duration_seconds_bucket[5m])) by (status, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(docutag_analysis_duration_seconds_bucket[5m])) by (status, le))",
           "legendFormat": "{{status}} p50",
           "refId": "B"
         }
@@ -1347,7 +1347,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_analyzer_ollama_requests_total[5m])) by (status)",
+          "expr": "sum(rate(docutag_analyzer_ollama_requests_total[5m])) by (status)",
           "legendFormat": "{{status}}",
           "refId": "A"
         }
@@ -1428,7 +1428,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "docutab_active_tasks",
+          "expr": "docutag_active_tasks",
           "refId": "A"
         }
       ],
@@ -1487,7 +1487,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_tasks_executed_total[1h]))",
+          "expr": "sum(increase(docutag_tasks_executed_total[1h]))",
           "refId": "A"
         }
       ],
@@ -1554,7 +1554,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(increase(docutab_task_failures_total[1h]))",
+          "expr": "sum(increase(docutag_task_failures_total[1h]))",
           "refId": "A"
         }
       ],
@@ -1642,7 +1642,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_tasks_executed_total[5m])) by (type, status)",
+          "expr": "sum(rate(docutag_tasks_executed_total[5m])) by (type, status)",
           "legendFormat": "{{type}} - {{status}}",
           "refId": "A"
         }
@@ -1731,7 +1731,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(docutab_task_failures_total[5m])) by (type, reason)",
+          "expr": "sum(rate(docutag_task_failures_total[5m])) by (type, reason)",
           "legendFormat": "{{type}} - {{reason}}",
           "refId": "A"
         }
@@ -1742,7 +1742,7 @@
   ],
   "refresh": "10s",
   "schemaVersion": 39,
-  "tags": ["docutab", "business", "metrics"],
+  "tags": ["docutag", "business", "metrics"],
   "templating": {
     "list": []
   },
@@ -1753,7 +1753,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "DocuTab Business Metrics",
-  "uid": "docutab-business",
+  "uid": "docutag-business",
   "version": 1,
   "weekStart": ""
 }

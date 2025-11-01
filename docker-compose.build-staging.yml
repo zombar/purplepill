@@ -5,36 +5,36 @@ version: '3.8'
 
 services:
   textanalyzer:
-    image: purpletab-textanalyzer:staging
+    image: docutag-textanalyzer:staging
     build:
       context: ./apps/textanalyzer
       dockerfile: Dockerfile
 
   scraper:
-    image: purpletab-scraper:staging
+    image: docutag-scraper:staging
     build:
       context: ./apps/scraper
       dockerfile: Dockerfile
 
   controller:
-    image: purpletab-controller:staging
+    image: docutag-controller:staging
     build:
       context: ./apps/controller
       dockerfile: Dockerfile
 
   scheduler:
-    image: purpletab-scheduler:staging
+    image: docutag-scheduler:staging
     build:
       context: ./apps/scheduler
       dockerfile: Dockerfile
 
   web:
-    image: purpletab-web:staging
+    image: docutag-web:staging
     build:
       context: ./apps/web
       dockerfile: Dockerfile
       args:
         # Build-time environment variables for React
         # Note: Vite requires VITE_ prefix for env vars to be exposed to client
-        - VITE_PUBLIC_URL_BASE=https://docutab.honker
+        - VITE_PUBLIC_URL_BASE=https://docutag.honker
         - VITE_CONTROLLER_API_URL=/api

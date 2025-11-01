@@ -36,7 +36,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json",
+          "expr": "{app=\"docutag\"} | json",
           "refId": "A"
         }
       ],
@@ -262,7 +262,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "sum(count_over_time({app=\"docutab\"} | json | level=\"error\" [5m])) by (service)",
+          "expr": "sum(count_over_time({app=\"docutag\"} | json | level=\"error\" [5m])) by (service)",
           "refId": "A"
         }
       ],
@@ -273,7 +273,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "tags": [
-    "docutab",
+    "docutag",
     "logs"
   ],
   "templating": {
@@ -286,6 +286,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "DocuTab Service Logs",
-  "uid": "docutab-logs",
+  "uid": "docutag-logs",
   "version": 1
 }

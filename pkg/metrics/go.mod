@@ -1,4 +1,4 @@
-module github.com/zombar/purpletab/pkg/metrics
+module github.com/docutag/platform/pkg/metrics
 
 go 1.24.0
 

@@ -74,7 +74,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum(docutab_documents_total{service=\"controller\"})",
+          "expr": "sum(docutag_documents_total{service=\"controller\"})",
           "legendFormat": "Total Documents",
           "range": true,
           "refId": "A"
@@ -85,7 +85,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_documents_with_tags{service=\"controller\"}",
+          "expr": "docutag_documents_with_tags{service=\"controller\"}",
           "hide": false,
           "legendFormat": "Documents with Tags",
           "range": true,
@@ -97,7 +97,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_documents_with_seo{service=\"controller\"}",
+          "expr": "docutag_documents_with_seo{service=\"controller\"}",
           "hide": false,
           "legendFormat": "Documents with SEO",
           "range": true,
@@ -109,7 +109,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_unique_tags_total{service=\"controller\"}",
+          "expr": "docutag_unique_tags_total{service=\"controller\"}",
           "hide": false,
           "legendFormat": "Unique Tags",
           "range": true,
@@ -192,7 +192,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_images_total_stored{service=\"scraper\"}",
+          "expr": "docutag_images_total_stored{service=\"scraper\"}",
           "legendFormat": "Total Images",
           "range": true,
           "refId": "A"
@@ -203,7 +203,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_images_storage_bytes{service=\"scraper\"} / 1024 / 1024",
+          "expr": "docutag_images_storage_bytes{service=\"scraper\"} / 1024 / 1024",
           "hide": false,
           "legendFormat": "Storage Size (MB)",
           "range": true,
@@ -298,7 +298,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_documents_total{service=\"controller\"}",
+          "expr": "docutag_documents_total{service=\"controller\"}",
           "legendFormat": "{{source_type}}",
           "range": true,
           "refId": "A"
@@ -409,7 +409,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_images_total_stored{service=\"scraper\"}",
+          "expr": "docutag_images_total_stored{service=\"scraper\"}",
           "legendFormat": "Image Count",
           "range": true,
           "refId": "A"
@@ -420,7 +420,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_images_storage_bytes{service=\"scraper\"} / 1024 / 1024",
+          "expr": "docutag_images_storage_bytes{service=\"scraper\"} / 1024 / 1024",
           "hide": false,
           "legendFormat": "Storage (MB)",
           "range": true,
@@ -515,7 +515,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(docutab_scrapes_completed_total{service=\"scraper\"}[5m])",
+          "expr": "rate(docutag_scrapes_completed_total{service=\"scraper\"}[5m])",
           "legendFormat": "{{status}} (per sec)",
           "range": true,
           "refId": "A"
@@ -609,7 +609,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(docutab_scrape_duration_seconds_sum{service=\"scraper\"}[5m]) / rate(docutab_scrape_duration_seconds_count{service=\"scraper\"}[5m])",
+          "expr": "rate(docutag_scrape_duration_seconds_sum{service=\"scraper\"}[5m]) / rate(docutag_scrape_duration_seconds_count{service=\"scraper\"}[5m])",
           "legendFormat": "{{status}}",
           "range": true,
           "refId": "A"
@@ -702,7 +702,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(docutab_links_extracted_total{service=\"scraper\"}[5m])",
+          "expr": "rate(docutag_links_extracted_total{service=\"scraper\"}[5m])",
           "legendFormat": "Links (per sec)",
           "range": true,
           "refId": "A"
@@ -713,7 +713,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(docutab_images_processed_total{service=\"scraper\"}[5m])",
+          "expr": "rate(docutag_images_processed_total{service=\"scraper\"}[5m])",
           "hide": false,
           "legendFormat": "Images (per sec)",
           "range": true,
@@ -808,7 +808,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "docutab_db_connections_open",
+          "expr": "docutag_db_connections_open",
           "legendFormat": "{{service}} - {{state}}",
           "range": true,
           "refId": "A"
@@ -901,7 +901,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(docutab_http_requests_total[5m])",
+          "expr": "rate(docutag_http_requests_total[5m])",
           "legendFormat": "{{service}} - {{status_code}}",
           "range": true,
           "refId": "A"
@@ -995,7 +995,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.50, rate(docutab_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.50, rate(docutag_http_request_duration_seconds_bucket[5m]))",
           "legendFormat": "{{service}} - p50",
           "range": true,
           "refId": "A"
@@ -1006,7 +1006,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.95, rate(docutab_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.95, rate(docutag_http_request_duration_seconds_bucket[5m]))",
           "hide": false,
           "legendFormat": "{{service}} - p95",
           "range": true,
@@ -1018,7 +1018,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "histogram_quantile(0.99, rate(docutab_http_request_duration_seconds_bucket[5m]))",
+          "expr": "histogram_quantile(0.99, rate(docutag_http_request_duration_seconds_bucket[5m]))",
           "hide": false,
           "legendFormat": "{{service}} - p99",
           "range": true,
@@ -1033,7 +1033,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "docutab",
+    "docutag",
     "documents",
     "images",
     "metrics"
@@ -1067,7 +1067,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "Docutab - Documents & Images Dashboard",
-  "uid": "docutab-dashboard",
+  "uid": "docutag-dashboard",
   "version": 1,
   "weekStart": ""
 }
