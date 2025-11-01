@@ -110,7 +110,7 @@ func SpanIDFromContext(ctx context.Context) string {
 // StartSpan starts a new span with the given name and options
 // Returns the new context and span. Caller must call span.End() when done.
 func StartSpan(ctx context.Context, spanName string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	tracer := otel.Tracer("purpletab")
+	tracer := otel.Tracer("docutag")
 	return tracer.Start(ctx, spanName, opts...)
 }
 
