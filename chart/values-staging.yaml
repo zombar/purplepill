@@ -1,0 +1,110 @@
+# Staging environment overrides
+global:
+  domain: docutag.honker
+  imageRegistry: ghcr.io/docutag
+  imagePullPolicy: IfNotPresent
+  storageClass: do-block-storage
+
+controller:
+  replicaCount: 2
+  image:
+    tag: staging
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+  env:
+    generateMockData: false
+
+scraper:
+  replicaCount: 1
+  image:
+    tag: staging
+  persistence:
+    size: 20Gi
+
+textanalyzer:
+  replicaCount: 2
+  image:
+    tag: staging
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+  env:
+    ollamaModel: "gemma3:12b"
+
+scheduler:
+  replicaCount: 1
+  image:
+    tag: staging
+  env:
+    defaultSchedule: "0 */6 * * *"
+
+web:
+  replicaCount: 2
+  image:
+    tag: staging
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 4
+
+redis:
+  master:
+    persistence:
+      size: 8Gi
+
+# Self-hosted PostgreSQL (saves ~$15-60/month vs managed)
+postgresql:
+  enabled: true
+  architecture: standalone
+  auth:
+    database: docutag
+    username: docutag
+    password: changeme  # Change this!
+  primary:
+    persistence:
+      size: 30Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# Use external managed DB if preferred (disable postgresql above)
+externalDatabase:
+  enabled: false
+  host: ""
+  port: 25060
+  database: docutag
+  username: doadmin
+  password: ""  # Set via --set or secret
+
+observability:
+  enabled: true
+  prometheus:
+    persistence:
+      size: 50Gi
+    retention: 30d
+  grafana:
+    persistence:
+      size: 10Gi
+    env:
+      authAnonymousEnabled: false
+      authDisableLoginForm: false
+    adminPassword: ""  # Set via --set or secret
+  loki:
+    persistence:
+      size: 30Gi
+  tempo:
+    persistence:
+      size: 20Gi
+
+ingress:
+  enabled: true
+  tls:
+    enabled: true
+    certResolver: letsencrypt

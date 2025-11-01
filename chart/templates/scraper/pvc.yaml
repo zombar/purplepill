@@ -1,0 +1,17 @@
+{{- if and .Values.scraper.enabled .Values.scraper.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "docutag.fullname" . }}-scraper-storage
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "scraper" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  accessModes:
+  - {{ .Values.scraper.persistence.accessMode }}
+  resources:
+    requests:
+      storage: {{ .Values.scraper.persistence.size }}
+  {{- if or .Values.scraper.persistence.storageClass .Values.global.storageClass }}
+  storageClassName: {{ .Values.scraper.persistence.storageClass | default .Values.global.storageClass }}
+  {{- end }}
+{{- end }}

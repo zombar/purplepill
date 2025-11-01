@@ -1,0 +1,121 @@
+{{- if .Values.ingress.enabled }}
+---
+# Web UI IngressRoute
+{{- if .Values.ingress.routes.web.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "docutag.fullname" . }}-web
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ tpl .Values.ingress.routes.web.host . }}`) && PathPrefix(`{{ .Values.ingress.routes.web.path }}`)
+      kind: Rule
+      services:
+        - name: {{ include "docutag.fullname" . }}-{{ .Values.ingress.routes.web.service }}
+          port: {{ .Values.ingress.routes.web.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    {{- if .Values.ingress.tls.certResolver }}
+    certResolver: {{ .Values.ingress.tls.certResolver }}
+    {{- end }}
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+---
+# Controller API IngressRoute
+{{- if .Values.ingress.routes.api.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "docutag.fullname" . }}-api
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ tpl .Values.ingress.routes.api.host . }}`) && PathPrefix(`{{ .Values.ingress.routes.api.path }}`)
+      kind: Rule
+      {{- if .Values.ingress.routes.api.middlewares }}
+      middlewares:
+        {{- toYaml .Values.ingress.routes.api.middlewares | nindent 8 }}
+      {{- end }}
+      services:
+        - name: {{ include "docutag.fullname" . }}-{{ .Values.ingress.routes.api.service }}
+          port: {{ .Values.ingress.routes.api.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    {{- if .Values.ingress.tls.certResolver }}
+    certResolver: {{ .Values.ingress.tls.certResolver }}
+    {{- end }}
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+---
+# Grafana IngressRoute
+{{- if and .Values.ingress.routes.grafana.enabled .Values.observability.grafana.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "docutag.fullname" . }}-grafana
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ tpl .Values.ingress.routes.grafana.host . }}`) && PathPrefix(`{{ .Values.ingress.routes.grafana.path }}`)
+      kind: Rule
+      services:
+        - name: {{ include "docutag.fullname" . }}-{{ .Values.ingress.routes.grafana.service }}
+          port: {{ .Values.ingress.routes.grafana.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    {{- if .Values.ingress.tls.certResolver }}
+    certResolver: {{ .Values.ingress.tls.certResolver }}
+    {{- end }}
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+---
+# Asynqmon IngressRoute
+{{- if and .Values.ingress.routes.asynqmon.enabled .Values.asynqmon.enabled }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: {{ include "docutag.fullname" . }}-asynqmon
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - match: Host(`{{ tpl .Values.ingress.routes.asynqmon.host . }}`) && PathPrefix(`{{ .Values.ingress.routes.asynqmon.path }}`)
+      kind: Rule
+      services:
+        - name: {{ include "docutag.fullname" . }}-{{ .Values.ingress.routes.asynqmon.service }}
+          port: {{ .Values.ingress.routes.asynqmon.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    {{- if .Values.ingress.tls.certResolver }}
+    certResolver: {{ .Values.ingress.tls.certResolver }}
+    {{- end }}
+    {{- if .Values.ingress.tls.secretName }}
+    secretName: {{ .Values.ingress.tls.secretName }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

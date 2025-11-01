@@ -1,0 +1,24 @@
+{{- if and .Values.textanalyzer.enabled .Values.textanalyzer.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "docutag.fullname" . }}-textanalyzer
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "textanalyzer" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docutag.fullname" . }}-textanalyzer
+  minReplicas: {{ .Values.textanalyzer.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.textanalyzer.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.textanalyzer.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.textanalyzer.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+{{- end }}

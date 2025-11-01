@@ -1,0 +1,14 @@
+{{- if .Values.scheduler.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docutag.fullname" . }}-scheduler
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "scheduler" "type" "backend" "context" .) | nindent 4 }}
+data:
+  PORT: {{ .Values.scheduler.env.port | quote }}
+  ENABLE_SCHEDULER: {{ .Values.scheduler.env.enableScheduler | quote }}
+  DEFAULT_SCHEDULE: {{ .Values.scheduler.env.defaultSchedule | quote }}
+  CONTROLLER_BASE_URL: {{ tpl .Values.scheduler.env.controllerBaseUrl . | quote }}
+  SCRAPER_URL: {{ tpl .Values.scheduler.env.scraperUrl . | quote }}
+{{- end }}

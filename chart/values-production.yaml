@@ -1,0 +1,202 @@
+# Production environment overrides
+global:
+  domain: docutag.io
+  imageRegistry: ghcr.io/docutag
+  imagePullPolicy: IfNotPresent
+  storageClass: do-block-storage
+
+controller:
+  replicaCount: 3
+  image:
+    tag: latest
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 15
+    targetCPUUtilizationPercentage: 60
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  env:
+    generateMockData: false
+    workerConcurrency: 20
+
+scraper:
+  replicaCount: 2
+  image:
+    tag: latest
+  persistence:
+    size: 100Gi
+  resources:
+    requests:
+      memory: "1Gi"
+      cpu: "1000m"
+    limits:
+      memory: "2Gi"
+      cpu: "2000m"
+
+textanalyzer:
+  replicaCount: 3
+  image:
+    tag: latest
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilizationPercentage: 60
+  resources:
+    requests:
+      memory: "512Mi"
+      cpu: "500m"
+    limits:
+      memory: "1Gi"
+      cpu: "1000m"
+  env:
+    ollamaModel: "gemma3:12b"
+    workerConcurrency: 10
+
+scheduler:
+  replicaCount: 2
+  image:
+    tag: latest
+  env:
+    defaultSchedule: "0 0 * * *"
+
+web:
+  replicaCount: 3
+  image:
+    tag: latest
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 8
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "200m"
+    limits:
+      memory: "512Mi"
+      cpu: "400m"
+
+redis:
+  master:
+    persistence:
+      size: 20Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+
+# Self-hosted PostgreSQL with HA (saves ~$240/month vs managed)
+postgresql:
+  enabled: true
+  architecture: replication  # Primary + read replica for HA
+  auth:
+    database: docutag
+    username: docutag
+    password: changeme  # CHANGE THIS!
+    replicationPassword: changeme  # CHANGE THIS!
+  primary:
+    persistence:
+      size: 100Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  readReplicas:
+    replicaCount: 1
+    persistence:
+      size: 100Gi
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+
+# Use external managed DB if preferred (disable postgresql above)
+externalDatabase:
+  enabled: false
+  host: ""  # Set via --set or secret
+  port: 25060
+  database: docutag
+  username: doadmin
+  password: ""  # Set via --set or secret
+
+observability:
+  enabled: true
+  prometheus:
+    persistence:
+      size: 100Gi
+    retention: 90d
+    resources:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "1000m"
+  grafana:
+    persistence:
+      size: 20Gi
+    env:
+      authAnonymousEnabled: false
+      authDisableLoginForm: false
+    adminPassword: ""  # Set via --set or secret
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "400m"
+  loki:
+    persistence:
+      size: 100Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "400m"
+  tempo:
+    persistence:
+      size: 50Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "400m"
+
+ingress:
+  enabled: true
+  tls:
+    enabled: true
+    certResolver: letsencrypt
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchExpressions:
+          - key: app.kubernetes.io/name
+            operator: In
+            values:
+            - docutag
+        topologyKey: kubernetes.io/hostname

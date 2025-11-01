@@ -1,0 +1,14 @@
+{{- if .Values.scraper.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docutag.fullname" . }}-scraper
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "scraper" "type" "backend" "context" .) | nindent 4 }}
+data:
+  PORT: {{ .Values.scraper.env.port | quote }}
+  STORAGE_BASE_PATH: {{ .Values.scraper.env.storagePath | quote }}
+  USE_OLLAMA: {{ .Values.scraper.env.useOllama | quote }}
+  OLLAMA_URL: {{ .Values.scraper.env.ollamaUrl | quote }}
+  OLLAMA_MODEL: {{ .Values.scraper.env.ollamaModel | quote }}
+{{- end }}

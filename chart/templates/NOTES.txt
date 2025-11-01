@@ -1,0 +1,83 @@
+Thank you for installing {{ .Chart.Name }} version {{ .Chart.Version }}!
+
+Your DocuTag application is being deployed to Kubernetes.
+
+{{- if .Values.ingress.enabled }}
+To access your application:
+
+1. Web UI:       https://{{ include "docutag.domain" . }}/
+2. Controller API: https://{{ include "docutag.domain" . }}/api/
+{{- if .Values.observability.grafana.enabled }}
+3. Grafana:      https://{{ include "docutag.domain" . }}/grafana
+{{- end }}
+{{- if .Values.asynqmon.enabled }}
+4. Queue Monitor: https://{{ include "docutag.domain" . }}/asynqmon
+{{- end }}
+
+{{- if .Values.ingress.tls.enabled }}
+TLS is enabled. Certificates will be automatically provisioned via {{ .Values.ingress.tls.certResolver }}.
+{{- else }}
+WARNING: TLS is disabled. Consider enabling it for production use.
+{{- end }}
+
+{{- else }}
+Ingress is disabled. To access services, use port-forwarding:
+
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "docutag.fullname" . }}-web 8080:80
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "docutag.fullname" . }}-controller 8081:8080
+
+{{- end }}
+
+To check the status of your deployment:
+
+  kubectl get pods -n {{ .Release.Namespace }}
+  kubectl get svc -n {{ .Release.Namespace }}
+  kubectl get ingressroute -n {{ .Release.Namespace }}
+
+To view logs:
+
+  kubectl logs -n {{ .Release.Namespace }} deployment/{{ include "docutag.fullname" . }}-controller
+  kubectl logs -n {{ .Release.Namespace }} deployment/{{ include "docutag.fullname" . }}-scraper
+
+{{- if .Values.postgresql.enabled }}
+
+Database Configuration:
+- PostgreSQL is deployed within the cluster
+- Host: {{ include "docutag.fullname" . }}-postgresql
+- Port: 5432
+- Database: {{ .Values.postgresql.auth.database }}
+
+{{- else if .Values.externalDatabase.enabled }}
+
+External Database Configuration:
+- Host: {{ .Values.externalDatabase.host }}
+- Port: {{ .Values.externalDatabase.port }}
+- Database: {{ .Values.externalDatabase.database }}
+
+{{- end }}
+
+{{- if .Values.observability.enabled }}
+
+Observability Stack:
+{{- if .Values.observability.prometheus.enabled }}
+- Prometheus: http://{{ include "docutag.fullname" . }}-prometheus:9090
+{{- end }}
+{{- if .Values.observability.grafana.enabled }}
+- Grafana: https://{{ include "docutag.domain" . }}/grafana
+  Default credentials: {{ .Values.observability.grafana.adminUser }} / {{ .Values.observability.grafana.adminPassword }}
+{{- end }}
+{{- if .Values.observability.loki.enabled }}
+- Loki: http://{{ include "docutag.fullname" . }}-loki:3100
+{{- end }}
+{{- if .Values.observability.tempo.enabled }}
+- Tempo: http://{{ include "docutag.fullname" . }}-tempo:3200
+{{- end }}
+
+{{- end }}
+
+For more information and documentation:
+- Chart README: https://github.com/docutag/platform/blob/main/chart/README.md
+- Project Documentation: https://github.com/docutag/platform#readme
+- Report Issues: https://github.com/docutag/platform/issues
+
+Happy DocuTagging! 🚀
