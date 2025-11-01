@@ -11,12 +11,12 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
-	"github.com/zombar/controller/internal/clients"
-	"github.com/zombar/controller/internal/handlers"
-	"github.com/zombar/controller/internal/queue"
-	"github.com/zombar/controller/internal/storage"
-	"github.com/zombar/controller/internal/urlcache"
-	"github.com/zombar/purpletab/pkg/metrics"
+	"github.com/docutag/controller/internal/clients"
+	"github.com/docutag/controller/internal/handlers"
+	"github.com/docutag/controller/internal/queue"
+	"github.com/docutag/controller/internal/storage"
+	"github.com/docutag/controller/internal/urlcache"
+	"github.com/docutag/platform/pkg/metrics"
 )
 
 /**

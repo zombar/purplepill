@@ -1,14 +1,14 @@
-module github.com/zombar/controller/tests/integration
+module github.com/docutag/platform/tests/integration
 
 go 1.24.0
 
 toolchain go1.24.9
 
 require (
+	github.com/docutag/controller v0.0.0-00010101000000-000000000000
+	github.com/docutag/platform/pkg/metrics v0.0.0-20251025182248-ffe3c0c56936
 	github.com/prometheus/client_golang v1.23.2
 	github.com/prometheus/client_model v0.6.2
-	github.com/zombar/controller v0.0.0-00010101000000-000000000000
-	github.com/zombar/purpletab/pkg/metrics v0.0.0-20251025182248-ffe3c0c56936
 )
 
 require (
@@ -16,6 +16,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/docutag/platform/pkg/tracing v0.0.0-00010101000000-000000000000 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -30,7 +31,6 @@ require (
 	github.com/redis/go-redis/v9 v9.7.0 // indirect
 	github.com/robfig/cron/v3 v3.0.1 // indirect
 	github.com/spf13/cast v1.7.0 // indirect
-	github.com/zombar/purpletab/pkg/tracing v0.0.0-00010101000000-000000000000 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.46.1 // indirect
 	go.opentelemetry.io/otel v1.38.0 // indirect
@@ -51,8 +51,8 @@ require (
 	google.golang.org/protobuf v1.36.8 // indirect
 )
 
-replace github.com/zombar/controller => ../../apps/controller
+replace github.com/docutag/controller => ../../apps/controller
 
-replace github.com/zombar/purpletab/pkg/metrics => ../../pkg/metrics
+replace github.com/docutag/platform/pkg/metrics => ../../pkg/metrics
 
-replace github.com/zombar/purpletab/pkg/tracing => ../../pkg/tracing
+replace github.com/docutag/platform/pkg/tracing => ../../pkg/tracing
