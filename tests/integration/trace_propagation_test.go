@@ -56,7 +56,7 @@ func TestHTTPTracePropagation(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		// Check controller logs for trace_id
-		logs := getContainerLogs(t, "docutab-controller", 50)
+		logs := getContainerLogs(t, "docutag-controller", 50)
 
 		// Verify at least one HTTP request log has a non-empty trace_id
 		foundTraceID := false
@@ -123,7 +123,7 @@ func TestHTTPTracePropagation(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		// Check scraper logs for trace_id
-		logs := getContainerLogs(t, "docutab-scraper", 50)
+		logs := getContainerLogs(t, "docutag-scraper", 50)
 
 		foundTraceID := false
 		for _, line := range logs {
@@ -180,7 +180,7 @@ func TestHTTPTracePropagation(t *testing.T) {
 		time.Sleep(500 * time.Millisecond)
 
 		// Check textanalyzer logs for trace_id
-		logs := getContainerLogs(t, "docutab-textanalyzer", 50)
+		logs := getContainerLogs(t, "docutag-textanalyzer", 50)
 
 		foundTraceID := false
 		for _, line := range logs {
