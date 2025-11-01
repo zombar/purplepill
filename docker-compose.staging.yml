@@ -423,7 +423,7 @@ services:
 
 # Networks and volumes for staging
 networks:
-  docutab-network:
+  docutag-network:
     driver: bridge
   proxy:
     external: true
