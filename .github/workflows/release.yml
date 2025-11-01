@@ -1,0 +1,249 @@
+name: Create Release
+
+# Triggers when staging is merged to main
+# Automatically creates versioned release with Docker images
+on:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write  # For creating tags and releases
+  packages: write  # For pushing to GHCR
+
+jobs:
+  # Calculate next version based on conventional commits
+  calculate-version:
+    runs-on: ubuntu-latest
+    environment: CI
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+      tag: ${{ steps.semver.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Get latest tag
+        id: latest-tag
+        run: |
+          LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+          echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "Latest tag: $LATEST_TAG"
+
+      - name: Calculate next version
+        id: semver
+        run: |
+          LATEST_TAG="${{ steps.latest-tag.outputs.latest_tag }}"
+
+          # Strip 'v' prefix if present
+          LATEST_VERSION="${LATEST_TAG#v}"
+
+          # Parse current version
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+
+          # Get commits since last tag
+          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
+
+          # Determine version bump based on conventional commits
+          BREAKING=false
+          FEAT=false
+          FIX=false
+
+          while IFS= read -r commit; do
+            if echo "$commit" | grep -qE "BREAKING CHANGE|!:"; then
+              BREAKING=true
+            elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
+              FEAT=true
+            elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
+              FIX=true
+            fi
+          done <<< "$COMMITS"
+
+          # Bump version
+          if [ "$BREAKING" = true ]; then
+            MAJOR=$((MAJOR + 1))
+            MINOR=0
+            PATCH=0
+            echo "Version bump: MAJOR (breaking change)"
+          elif [ "$FEAT" = true ]; then
+            MINOR=$((MINOR + 1))
+            PATCH=0
+            echo "Version bump: MINOR (new feature)"
+          elif [ "$FIX" = true ]; then
+            PATCH=$((PATCH + 1))
+            echo "Version bump: PATCH (bug fix)"
+          else
+            PATCH=$((PATCH + 1))
+            echo "Version bump: PATCH (default)"
+          fi
+
+          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+          NEW_TAG="v$NEW_VERSION"
+
+          echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
+          echo "Next version: $NEW_VERSION (tag: $NEW_TAG)"
+
+  # Build and push Docker images with version tag
+  build-and-push:
+    runs-on: ubuntu-latest
+    environment: CI
+    needs: calculate-version
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push versioned images
+        run: |
+          VERSION="${{ needs.calculate-version.outputs.version }}"
+          echo "Building images with version: $VERSION"
+
+          chmod +x build-staging.sh
+          ./build-staging.sh push $VERSION
+        env:
+          REGISTRY: ghcr.io/${{ github.repository_owner }}
+
+  # Create Git tag and GitHub release
+  create-release:
+    runs-on: ubuntu-latest
+    environment: CI
+    needs: [calculate-version, build-and-push]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Create and push tag
+        run: |
+          TAG="${{ needs.calculate-version.outputs.tag }}"
+          VERSION="${{ needs.calculate-version.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+          echo "Created and pushed tag: $TAG"
+
+      - name: Get submodule versions
+        id: submodules
+        run: |
+          echo "controller=$(git -C apps/controller rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "scraper=$(git -C apps/scraper rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "textanalyzer=$(git -C apps/textanalyzer rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "scheduler=$(git -C apps/scheduler rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+          echo "web=$(git -C apps/web rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release-notes
+        run: |
+          TAG="${{ needs.calculate-version.outputs.tag }}"
+          VERSION="${{ needs.calculate-version.outputs.version }}"
+          PREV_TAG=$(git describe --tags --abbrev=0 $TAG^ 2>/dev/null || echo "")
+
+          cat > release-notes.md <<EOF
+          # DocuTag Platform $TAG
+
+          ## Deployment
+
+          To deploy this version to production:
+
+          \`\`\`bash
+          cd infra
+          pulumi config set imageVersion $VERSION --stack production
+          pulumi up --stack production
+          \`\`\`
+
+          ## Docker Images
+
+          \`\`\`
+          ghcr.io/docutag/docutag-controller:$VERSION
+          ghcr.io/docutag/docutag-scraper:$VERSION
+          ghcr.io/docutag/docutag-textanalyzer:$VERSION
+          ghcr.io/docutag/docutag-scheduler:$VERSION
+          ghcr.io/docutag/docutag-web:$VERSION
+          \`\`\`
+
+          ## Service Versions (Submodule Commits)
+
+          - **controller**: \`${{ steps.submodules.outputs.controller }}\`
+          - **scraper**: \`${{ steps.submodules.outputs.scraper }}\`
+          - **textanalyzer**: \`${{ steps.submodules.outputs.textanalyzer }}\`
+          - **scheduler**: \`${{ steps.submodules.outputs.scheduler }}\`
+          - **web**: \`${{ steps.submodules.outputs.web }}\`
+
+          ## What's Changed
+
+          EOF
+
+          if [ -n "$PREV_TAG" ]; then
+            echo "Commits since $PREV_TAG:" >> release-notes.md
+            echo "" >> release-notes.md
+            git log $PREV_TAG..HEAD --pretty=format:"- %s (%h)" --no-merges >> release-notes.md
+          else
+            echo "Initial release" >> release-notes.md
+          fi
+
+          cat release-notes.md
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.calculate-version.outputs.tag }}
+          name: DocuTag Platform ${{ needs.calculate-version.outputs.tag }}
+          body_path: release-notes.md
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Summary job
+  release-success:
+    runs-on: ubuntu-latest
+    needs: [calculate-version, build-and-push, create-release]
+    if: always()
+    steps:
+      - name: Check release status
+        run: |
+          if [ "${{ needs.create-release.result }}" == "failure" ]; then
+            echo "❌ Release creation failed"
+            exit 1
+          fi
+          if [ "${{ needs.build-and-push.result }}" == "failure" ]; then
+            echo "❌ Image build and push failed"
+            exit 1
+          fi
+
+          VERSION="${{ needs.calculate-version.outputs.version }}"
+          TAG="${{ needs.calculate-version.outputs.tag }}"
+
+          echo "✅ Release $TAG created successfully!"
+          echo ""
+          echo "📦 Images published:"
+          echo "   ghcr.io/docutag/docutag-controller:$VERSION"
+          echo "   ghcr.io/docutag/docutag-scraper:$VERSION"
+          echo "   ghcr.io/docutag/docutag-textanalyzer:$VERSION"
+          echo "   ghcr.io/docutag/docutag-scheduler:$VERSION"
+          echo "   ghcr.io/docutag/docutag-web:$VERSION"
+          echo ""
+          echo "🚀 Deploy to production:"
+          echo "   cd infra"
+          echo "   pulumi config set imageVersion $VERSION --stack production"
+          echo "   pulumi up --stack production"

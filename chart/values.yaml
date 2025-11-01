@@ -10,6 +10,11 @@ global:
   # Image registry (override with your registry)
   imageRegistry: ghcr.io/docutag
 
+  # Image version/tag for all service images
+  # Default: "staging" for development
+  # Production: Set to specific version (e.g., "1.0.0") via Pulumi
+  imageVersion: staging
+
   # Image pull policy
   imagePullPolicy: IfNotPresent
 

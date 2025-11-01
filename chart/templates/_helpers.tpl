@@ -91,6 +91,9 @@ Usage: {{ include "docutag.image" (dict "imageRoot" .Values.controller.image "gl
     {{- if .global.imageRegistry }}
      {{- $registryName = .global.imageRegistry -}}
     {{- end -}}
+    {{- if .global.imageVersion }}
+     {{- $tag = .global.imageVersion | toString -}}
+    {{- end -}}
 {{- end -}}
 {{- if $registryName }}
 {{- printf "%s/%s:%s" $registryName $repositoryName $tag -}}

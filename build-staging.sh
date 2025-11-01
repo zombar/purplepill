@@ -1,13 +1,15 @@
 #!/bin/bash
 set -e
 
-# Build and optionally push staging Docker images for DocuTag
+# Build and optionally push Docker images for DocuTag
 # Usage:
 #   ./build-staging.sh              - Build all services for local platform
-#   ./build-staging.sh push         - Build multi-platform and push to registry
+#   ./build-staging.sh push         - Build multi-platform and push with :staging tag
+#   ./build-staging.sh push 1.0.0   - Build multi-platform and push with :1.0.0 tag
 
 REGISTRY=${REGISTRY:-ghcr.io/docutag}
 PUSH=${1:-}
+VERSION=${2:-staging}  # Default to "staging" tag if no version specified
 
 # Define all services
 SERVICES=("textanalyzer" "scraper" "controller" "scheduler" "web")
@@ -37,10 +39,11 @@ fi
 if [ "$PUSH" = "push" ]; then
     echo "📦 Building and pushing images for amd64..."
     echo "   Registry: $REGISTRY"
+    echo "   Version: $VERSION"
     echo ""
 
     for service in "${SERVICES[@]}"; do
-        echo "→ Building and pushing $service..."
+        echo "→ Building and pushing $service:$VERSION..."
         dockerfile=$(get_dockerfile "$service")
 
         if [ "$service" = "web" ]; then
@@ -51,14 +54,14 @@ if [ "$PUSH" = "push" ]; then
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutag.honker/grafana \
                 --build-arg VITE_ASYNQ_URL=http://honker:9084 \
-                -t $REGISTRY/docutag-$service:staging \
+                -t $REGISTRY/docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \
                 --push
         else
             docker buildx build \
                 --platform linux/amd64 \
-                -t $REGISTRY/docutag-$service:staging \
+                -t $REGISTRY/docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \
                 --push
@@ -70,10 +73,11 @@ if [ "$PUSH" = "push" ]; then
     echo "✅ All images built and pushed!"
 else
     echo "📦 Building images for local platform..."
+    echo "   Version: $VERSION"
     echo ""
 
     for service in "${SERVICES[@]}"; do
-        echo "→ Building $service..."
+        echo "→ Building $service:$VERSION..."
         dockerfile=$(get_dockerfile "$service")
 
         if [ "$service" = "web" ]; then
@@ -83,13 +87,13 @@ else
                 --build-arg VITE_CONTROLLER_API_URL= \
                 --build-arg VITE_GRAFANA_URL=https://docutag.honker/grafana \
                 --build-arg VITE_ASYNQ_URL=http://honker:9084 \
-                -t docutag-$service:staging \
+                -t docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \
                 --load
         else
             docker buildx build \
-                -t docutag-$service:staging \
+                -t docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \
                 --load
@@ -105,8 +109,8 @@ echo ""
 echo "📋 Images:"
 for service in "${SERVICES[@]}"; do
     if [ "$PUSH" = "push" ]; then
-        echo "   • $REGISTRY/docutag-$service:staging"
+        echo "   • $REGISTRY/docutag-$service:$VERSION"
     else
-        echo "   • docutag-$service:staging"
+        echo "   • docutag-$service:$VERSION"
     fi
 done

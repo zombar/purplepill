@@ -1,11 +1,15 @@
 # DocuTag
 
 [![CI](https://github.com/docutag/platform/actions/workflows/ci.yml/badge.svg)](https://github.com/docutag/platform/actions/workflows/ci.yml)
+[![Release](https://github.com/docutag/platform/actions/workflows/release.yml/badge.svg)](https://github.com/docutag/platform/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/docutag/platform)](https://github.com/docutag/platform/releases/latest)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![GitHub issues](https://img.shields.io/github/issues/docutag/platform)](https://github.com/docutag/platform/issues)
 [![GitHub stars](https://img.shields.io/github/stars/docutag/platform?style=social)](https://github.com/docutag/platform/stargazers)
 
 A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
+
+📦 **Latest Release**: [View Releases](https://github.com/docutag/platform/releases) | [Release Process](docs/RELEASES.md)
 
 ## Architecture
 

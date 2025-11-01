@@ -2,13 +2,13 @@
 global:
   domain: docutag.io
   imageRegistry: ghcr.io/docutag
+  # imageVersion: Set automatically by Pulumi deployment (e.g., "1.0.0")
+  # Do not hardcode - version is managed via Pulumi config
   imagePullPolicy: IfNotPresent
   storageClass: do-block-storage
 
 controller:
   replicaCount: 3
-  image:
-    tag: latest
   autoscaling:
     enabled: true
     minReplicas: 3
@@ -27,8 +27,6 @@ controller:
 
 scraper:
   replicaCount: 2
-  image:
-    tag: latest
   persistence:
     size: 100Gi
   resources:
@@ -41,8 +39,6 @@ scraper:
 
 textanalyzer:
   replicaCount: 3
-  image:
-    tag: latest
   autoscaling:
     enabled: true
     minReplicas: 3
@@ -61,15 +57,11 @@ textanalyzer:
 
 scheduler:
   replicaCount: 2
-  image:
-    tag: latest
   env:
     defaultSchedule: "0 0 * * *"
 
 web:
   replicaCount: 3
-  image:
-    tag: latest
   autoscaling:
     enabled: true
     minReplicas: 3
