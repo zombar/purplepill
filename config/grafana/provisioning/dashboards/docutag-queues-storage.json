@@ -470,7 +470,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_open{app=\"docutab\"}",
+          "expr": "db_connections_open{app=\"docutag\"}",
           "legendFormat": "{{service}} - open",
           "refId": "A"
         },
@@ -479,7 +479,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_idle{app=\"docutab\"}",
+          "expr": "db_connections_idle{app=\"docutag\"}",
           "legendFormat": "{{service}} - idle",
           "refId": "B"
         }
@@ -575,7 +575,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_open{app=\"docutab\"}",
+          "expr": "db_connections_open{app=\"docutag\"}",
           "legendFormat": "{{service}} - open",
           "refId": "A"
         },
@@ -584,7 +584,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_in_use{app=\"docutab\"}",
+          "expr": "db_connections_in_use{app=\"docutag\"}",
           "legendFormat": "{{service}} - in use",
           "refId": "B"
         },
@@ -593,7 +593,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_idle{app=\"docutab\"}",
+          "expr": "db_connections_idle{app=\"docutag\"}",
           "legendFormat": "{{service}} - idle",
           "refId": "C"
         }
@@ -681,7 +681,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "pg_database_size_bytes{service=\"postgres\", datname=\"docutab\"}",
+          "expr": "pg_database_size_bytes{service=\"postgres\", datname=\"docutag\"}",
           "legendFormat": "Database Size",
           "refId": "A"
         }
@@ -773,7 +773,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sort_desc(pg_database_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutab\"})",
+          "expr": "sort_desc(pg_database_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutag\"})",
           "legendFormat": "{{datname}}",
           "refId": "A"
         }
@@ -861,7 +861,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "pg_database_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutab\"}",
+          "expr": "pg_database_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutag\"}",
           "legendFormat": "{{datname}}",
           "refId": "A"
         }
@@ -931,7 +931,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "pg_stat_user_tables_count{service=\"postgres\",datname!~\"template.*|postgres|docutab\"}",
+          "expr": "pg_stat_user_tables_count{service=\"postgres\",datname!~\"template.*|postgres|docutag\"}",
           "legendFormat": "{{datname}}",
           "refId": "A"
         }
@@ -1034,7 +1034,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "topk(10, pg_stat_user_tables_total_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutab\"})",
+          "expr": "topk(10, pg_stat_user_tables_total_size_bytes{service=\"postgres\",datname!~\"template.*|postgres|docutag\"})",
           "format": "table",
           "instant": true,
           "legendFormat": "{{datname}}.{{relname}}",
@@ -1096,7 +1096,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json | msg=~\"(?i)(queue|asynq|task|job)\"",
+          "expr": "{app=\"docutag\"} | json | msg=~\"(?i)(queue|asynq|task|job)\"",
           "refId": "A"
         }
       ],
@@ -1107,7 +1107,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "tags": [
-    "docutab",
+    "docutag",
     "queues",
     "database",
     "storage"
@@ -1122,6 +1122,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "DocuTab Queues & Storage",
-  "uid": "docutab-queues-storage",
+  "uid": "docutag-queues-storage",
   "version": 1
 }

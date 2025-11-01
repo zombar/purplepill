@@ -1,15 +1,15 @@
 [submodule "apps/scraper"]
 	path = apps/scraper
-	url = https://github.com/zombar/scraper
+	url = https://github.com/docutag/scraper
 [submodule "apps/controller"]
 	path = apps/controller
-	url = https://github.com/zombar/controller
+	url = https://github.com/docutag/controller
 [submodule "apps/textanalyzer"]
 	path = apps/textanalyzer
-	url = https://github.com/zombar/textanalyzer
+	url = https://github.com/docutag/textanalyzer
 [submodule "apps/web"]
 	path = apps/web
-	url = https://github.com/zombar/purplepill-webui
+	url = https://github.com/docutag/web
 [submodule "apps/scheduler"]
 	path = apps/scheduler
-	url = git@github.com:zombar/scheduler.git
+	url = https://github.com/docutag/scheduler

@@ -10,7 +10,7 @@ SCHEDULER_DIR=apps/scheduler
 
 # Default target
 help: ## Display this help message
-	@echo "PurplePill - Available targets:"
+	@echo "DocuTag - Available targets:"
 	@echo ""
 	@echo "Aggregate commands (run across all submodules):"
 	@echo "  build              - Build all services"
@@ -42,7 +42,7 @@ help: ## Display this help message
 	@echo ""
 	@echo "Docker staging commands (dev machine):"
 	@echo "  docker-staging-build   - Build all service images for staging"
-	@echo "  docker-staging-push    - Build and push all images to ghcr.io/zombar"
+	@echo "  docker-staging-push    - Build and push all images to ghcr.io/docutag"
 	@echo "  docker-staging-deploy  - Full local deploy: build and start services"
 	@echo ""
 	@echo "Docker staging commands (server):"
@@ -257,7 +257,7 @@ docker-staging-build: ## Build all service images for staging
 	@echo "✅ All tests passed! Proceeding with staging build..."
 	@./build-staging.sh
 
-docker-staging-push: ## Build and push all images to ghcr.io/zombar
+docker-staging-push: ## Build and push all images to ghcr.io/docutag
 	@echo "Running full test suite before staging push..."
 	@$(MAKE) test
 	@echo ""
@@ -286,7 +286,7 @@ docker-staging-deploy: ## Full local deploy: build and start all services (dev m
 	@docker compose -f docker-compose.yml -f docker-compose.staging.yml up -d
 	@echo ""
 	@echo "✅ Staging deployment complete!"
-	@echo "   Staging URL:   https://purpletab.honker (via reverse proxy)"
+	@echo "   Staging URL:   https://docutag.honker (via reverse proxy)"
 	@echo "   Local Web:     http://localhost:3001"
 	@echo "   Local API:     http://localhost:9080"
 
@@ -319,17 +319,17 @@ docker-staging-volumes: ## List volumes and their sizes
 	@docker volume ls --filter name=purpletab
 	@echo ""
 	@echo "Volume sizes:"
-	@docker system df -v | grep purpletab || echo "No purpletab volumes found"
+	@docker system df -v | grep purpletab || echo "No docutag volumes found"
 
 docker-staging-volume-inspect: ## Inspect volume contents and verify data persistence
 	@echo "Checking controller database..."
-	@docker run --rm -v purpletab_controller-data:/data alpine ls -lh /data/ || echo "No controller data found"
+	@docker run --rm -v docutag_controller-data:/data alpine ls -lh /data/ || echo "No controller data found"
 	@echo ""
 	@echo "Checking scraper database..."
-	@docker run --rm -v purpletab_scraper-data:/data alpine ls -lh /data/ || echo "No scraper data found"
+	@docker run --rm -v docutag_scraper-data:/data alpine ls -lh /data/ || echo "No scraper data found"
 	@echo ""
 	@echo "Checking scraper storage..."
-	@docker run --rm -v purpletab_scraper-storage:/data alpine ls -lh /data/ || echo "No scraper storage found"
+	@docker run --rm -v docutag_scraper-storage:/data alpine ls -lh /data/ || echo "No scraper storage found"
 
 docker-staging-verify-mounts: ## Show actual volume mounts for running containers
 	@echo "Checking volume mounts for running containers..."
@@ -411,7 +411,7 @@ docker-exec-web: ## Execute command in web (use CMD='...')
 
 docker-volumes: ## List all volumes
 	@echo "Docker volumes:"
-	@docker volume ls | grep purpletab || echo "No purpletab volumes found"
+	@docker volume ls | grep purpletab || echo "No docutag volumes found"
 
 docker-volumes-inspect: ## Inspect volume usage
 	@echo "Volume details:"
@@ -427,9 +427,9 @@ docker-volumes-clean: ## Remove unused volumes (WARNING: destructive)
 	@docker volume prune -f
 	@echo "Unused volumes removed!"
 
-docker-images: ## List all purpletab images
-	@echo "PurpleTab Docker images:"
-	@docker images | grep -E "(REPOSITORY|purpletab)" || echo "No purpletab images found"
+docker-images: ## List all docutag images
+	@echo "DocuTag Docker images:"
+	@docker images | grep -E "(REPOSITORY|docutag)" || echo "No docutag images found"
 
 docker-prune: ## Remove unused containers, networks, and images
 	@echo "Pruning unused Docker resources..."

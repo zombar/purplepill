@@ -104,7 +104,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(http_requests_total{app=\"docutab\"}[5m])",
+          "expr": "rate(http_requests_total{app=\"docutag\"}[5m])",
           "legendFormat": "{{service}} - {{method}} {{path}}",
           "refId": "A"
         }
@@ -194,7 +194,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{app=\"docutag\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p50",
           "refId": "A"
         },
@@ -203,7 +203,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutag\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p95",
           "refId": "B"
         },
@@ -212,7 +212,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutag\"}[5m])) by (service, le))",
           "legendFormat": "{{service}} - p99",
           "refId": "C"
         }
@@ -270,7 +270,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "http_requests_active{app=\"docutab\"}",
+          "expr": "http_requests_active{app=\"docutag\"}",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -405,7 +405,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{app=\"docutab\"}[5m])) by (service, status)",
+          "expr": "sum(rate(http_requests_total{app=\"docutag\"}[5m])) by (service, status)",
           "legendFormat": "{{service}} - {{status}}",
           "refId": "A"
         }
@@ -471,7 +471,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up{app=\"docutab\"}",
+          "expr": "up{app=\"docutag\"}",
           "legendFormat": "{{job}}",
           "refId": "A"
         }
@@ -592,7 +592,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_open{app=\"docutab\"}",
+          "expr": "db_connections_open{app=\"docutag\"}",
           "legendFormat": "{{service}} - Open",
           "refId": "A"
         },
@@ -601,7 +601,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "db_connections_idle{app=\"docutab\"}",
+          "expr": "db_connections_idle{app=\"docutag\"}",
           "legendFormat": "{{service}} - Idle",
           "refId": "B"
         }
@@ -691,7 +691,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(db_connections_wait_duration_seconds_total{app=\"docutab\"}[5m]) / rate(db_connections_wait_count_total{app=\"docutab\"}[5m])",
+          "expr": "rate(db_connections_wait_duration_seconds_total{app=\"docutag\"}[5m]) / rate(db_connections_wait_count_total{app=\"docutag\"}[5m])",
           "legendFormat": "{{service}} - avg wait time",
           "refId": "A"
         }
@@ -781,7 +781,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(process_cpu_seconds_total{app=\"docutab\"}[5m]) * 100",
+          "expr": "rate(process_cpu_seconds_total{app=\"docutag\"}[5m]) * 100",
           "legendFormat": "{{service}} - CPU Usage",
           "refId": "A"
         }
@@ -871,7 +871,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_alloc_bytes{app=\"docutab\"}",
+          "expr": "go_memstats_alloc_bytes{app=\"docutag\"}",
           "legendFormat": "{{service}} - Allocated Memory",
           "refId": "A"
         },
@@ -880,7 +880,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_sys_bytes{app=\"docutab\"}",
+          "expr": "go_memstats_sys_bytes{app=\"docutag\"}",
           "legendFormat": "{{service}} - System Memory",
           "refId": "B"
         }
@@ -916,7 +916,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json",
+          "expr": "{app=\"docutag\"} | json",
           "refId": "A"
         }
       ],
@@ -928,7 +928,7 @@
   "schemaVersion": 38,
   "style": "dark",
   "tags": [
-    "docutab",
+    "docutag",
     "backend"
   ],
   "templating": {
@@ -941,7 +941,7 @@
   "timepicker": {},
   "timezone": "",
   "title": "DocuTab Backend Metrics",
-  "uid": "docutab-backend",
+  "uid": "docutag-backend",
   "version": 1,
   "weekStart": ""
 }

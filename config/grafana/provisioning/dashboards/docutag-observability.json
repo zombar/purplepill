@@ -12,7 +12,7 @@
       "icon": "external link",
       "includeVars": false,
       "keepTime": true,
-      "tags": ["docutab"],
+      "tags": ["docutag"],
       "targetBlank": true,
       "title": "Other Dashboards",
       "type": "dashboards"
@@ -98,7 +98,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "sum(rate(http_requests_total{app=\"docutab\"}[1m])) by (service)",
+          "expr": "sum(rate(http_requests_total{app=\"docutag\"}[1m])) by (service)",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -193,7 +193,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{app=\"docutag\"}[5m])) by (service, le))",
           "legendFormat": "p95 {{service}}",
           "refId": "A"
         },
@@ -202,7 +202,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutab\"}[5m])) by (service, le))",
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{app=\"docutag\"}[5m])) by (service, le))",
           "legendFormat": "p99 {{service}}",
           "refId": "B"
         }
@@ -229,7 +229,7 @@
             "uid": "tempo"
           },
           "limit": 20,
-          "query": "{resource.service.name=~\"docutab-.*\"}",
+          "query": "{resource.service.name=~\"docutag-.*\"}",
           "queryType": "traceql",
           "refId": "A",
           "tableType": "traces"
@@ -457,7 +457,7 @@
             "type": "loki",
             "uid": "loki"
           },
-          "expr": "{app=\"docutab\"} | json | level=~\"error|warn\"",
+          "expr": "{app=\"docutag\"} | json | level=~\"error|warn\"",
           "refId": "A"
         }
       ],
@@ -525,7 +525,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "rate(process_cpu_seconds_total{app=\"docutab\", service=\"controller\"}[5m]) * 100",
+          "expr": "rate(process_cpu_seconds_total{app=\"docutag\", service=\"controller\"}[5m]) * 100",
           "refId": "A"
         }
       ],
@@ -591,7 +591,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "go_memstats_alloc_bytes{app=\"docutab\", service=\"controller\"}",
+          "expr": "go_memstats_alloc_bytes{app=\"docutag\", service=\"controller\"}",
           "refId": "A"
         }
       ],
@@ -671,7 +671,7 @@
             "type": "prometheus",
             "uid": "prometheus"
           },
-          "expr": "up{app=\"docutab\"}",
+          "expr": "up{app=\"docutag\"}",
           "legendFormat": "{{service}}",
           "refId": "A"
         }
@@ -683,7 +683,7 @@
   "refresh": "10s",
   "schemaVersion": 38,
   "tags": [
-    "docutab",
+    "docutag",
     "observability",
     "tracing",
     "metrics"
@@ -698,6 +698,6 @@
   "timepicker": {},
   "timezone": "",
   "title": "DocuTab Observability",
-  "uid": "docutab-observability",
+  "uid": "docutag-observability",
   "version": 1
 }

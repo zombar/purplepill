@@ -1,15 +1,15 @@
-# PurpleTab
+# DocuTag
 
-[![CI](https://github.com/zombar/purpletab/actions/workflows/ci.yml/badge.svg)](https://github.com/zombar/purpletab/actions/workflows/ci.yml)
+[![CI](https://github.com/docutag/platform/actions/workflows/ci.yml/badge.svg)](https://github.com/docutag/platform/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/zombar/purpletab)](https://github.com/zombar/purpletab/issues)
-[![GitHub stars](https://img.shields.io/github/stars/zombar/purpletab?style=social)](https://github.com/zombar/purpletab/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/docutag/platform)](https://github.com/docutag/platform/issues)
+[![GitHub stars](https://img.shields.io/github/stars/docutag/platform?style=social)](https://github.com/docutag/platform/stargazers)
 
 A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
 
 ## Architecture
 
-PurpleTab consists of multiple services that work together:
+DocuTag consists of multiple services that work together:
 
 **Core Services:**
 - **Scraper** - Fetches web pages and extracts content, images, and metadata using Ollama AI models. Stores files in filesystem with SEO-friendly slugs
@@ -24,7 +24,7 @@ PurpleTab consists of multiple services that work together:
 
 ### Two-Audience Architecture
 
-PurpleTab serves **two distinct audiences** with different interfaces:
+DocuTag serves **two distinct audiences** with different interfaces:
 
 **1. Internal Users (Administrators)**
 - Use the React Web App (Port 3000)
@@ -213,9 +213,9 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 **PostgreSQL (shared by all services):**
 - `DB_HOST` - PostgreSQL host (default: postgres)
 - `DB_PORT` - PostgreSQL port (default: 5432)
-- `DB_USER` - Database user (default: docutab)
-- `DB_PASSWORD` - Database password (default: docutab_dev_pass)
-- `DB_NAME` - Database name (default: docutab)
+- `DB_USER` - Database user (default: docutag)
+- `DB_PASSWORD` - Database password (default: docutag_dev_pass)
+- `DB_NAME` - Database name (default: docutag)
 - `DB_MAX_OPEN_CONNS` - Maximum open connections (default: 25)
 - `DB_MAX_IDLE_CONNS` - Maximum idle connections (default: 5)
 - `DB_CONN_MAX_LIFETIME` - Connection max lifetime (default: 5m)
@@ -225,7 +225,7 @@ Service configuration is managed through `docker-compose.yml`. Key environment v
 
 ## Observability
 
-PurpleTab includes comprehensive observability through Prometheus, Grafana, Tempo (tracing), and Loki (logging):
+DocuTag includes comprehensive observability through Prometheus, Grafana, Tempo (tracing), and Loki (logging):
 
 ### Monitoring Stack
 - **Prometheus** (http://localhost:9090) - Metrics collection and querying
@@ -240,7 +240,7 @@ All services expose `/metrics` endpoints with:
 - **System metrics**: CPU, memory, disk usage via node-exporter
 
 ### Pre-built Dashboards
-- **PurpleTab Backend Metrics** - Complete backend observability at http://localhost:3000/d/purpletab-backend
+- **DocuTag Backend Metrics** - Complete backend observability at http://localhost:3000/d/docutag-backend
   - HTTP request rates and latency percentiles (p50, p95, p99)
   - Database connection pools and query performance
   - HTTP status code distribution
@@ -248,7 +248,7 @@ All services expose `/metrics` endpoints with:
   - System resource usage (CPU, memory)
   - Real-time service logs (Loki)
 
-- **PurpleTab Distributed Tracing** - Request tracing and performance at http://localhost:3000/d/purpletab-tracing
+- **DocuTag Distributed Tracing** - Request tracing and performance at http://localhost:3000/d/docutag-tracing
   - Recent traces visualization
   - Request rate by HTTP method
   - Request duration by service (p50, p95, p99)
@@ -256,7 +256,7 @@ All services expose `/metrics` endpoints with:
   - Error rate tracking
   - Interactive trace search
 
-- **PurpleTab Service Logs** - Centralized log viewer at http://localhost:3000/d/purpletab-logs
+- **DocuTag Service Logs** - Centralized log viewer at http://localhost:3000/d/docutag-logs
   - Aggregated logs from all services
   - Log level filtering
   - Service-specific log streams
@@ -273,9 +273,9 @@ curl http://localhost:9083/metrics  # Scheduler
 curl 'http://localhost:9090/api/v1/query?query=http_requests_total'
 
 # Open Grafana dashboards
-open http://localhost:3000/d/purpletab-backend    # Backend metrics
-open http://localhost:3000/d/purpletab-tracing    # Distributed tracing
-open http://localhost:3000/d/purpletab-logs       # Service logs
+open http://localhost:3000/d/docutag-backend    # Backend metrics
+open http://localhost:3000/d/docutag-tracing    # Distributed tracing
+open http://localhost:3000/d/docutag-logs       # Service logs
 ```
 
 **Additional Resources:**
@@ -344,7 +344,7 @@ make help               # Show all available commands
 ### Project Structure
 
 ```
-purpletab/
+platform/
 ├── apps/
 │   ├── controller/       # Orchestration service
 │   │   ├── cmd/          # Application entry point
@@ -438,7 +438,7 @@ Workflows are located in `.github/workflows/`:
 
 #### Integration Tests
 
-PurplePill includes comprehensive integration tests that verify the interactions between all services:
+DocuTag includes comprehensive integration tests that verify the interactions between all services:
 
 - Tests full Controller → Scraper → TextAnalyzer workflows
 - Validates metadata structure and service orchestration
@@ -462,10 +462,10 @@ Services connect to a shared PostgreSQL instance using environment variables. Se
 
 ### Code Metrics
 
-![GitHub code size](https://img.shields.io/github/languages/code-size/zombar/purpletab)
-![Lines of code](https://img.shields.io/tokei/lines/github/zombar/purpletab)
-![GitHub last commit](https://img.shields.io/github/last-commit/zombar/purpletab)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/zombar/purpletab)
+![GitHub code size](https://img.shields.io/github/languages/code-size/docutag/platform)
+![Lines of code](https://img.shields.io/tokei/lines/github/docutag/platform)
+![GitHub last commit](https://img.shields.io/github/last-commit/docutag/platform)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/docutag/platform)
 
 ### Service Test Coverage
 
@@ -484,15 +484,15 @@ Run `make test` for unit tests, `make test-integration` for integration tests, o
 
 ### Language Breakdown
 
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=zombar&repo=purpletab&layout=compact&theme=dark)
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=docutag&repo=platform&layout=compact&theme=dark)
 
 ### Repository Activity
 
-![GitHub Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=zombar&repo=purpletab&theme=github-compact)
+![GitHub Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=docutag&repo=platform&theme=github-compact)
 
 ### Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=zombar/purpletab)](https://github.com/zombar/purpletab/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=docutag/platform)](https://github.com/docutag/platform/graphs/contributors)
 
 ## Production Considerations
 

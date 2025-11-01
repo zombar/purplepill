@@ -1,13 +1,13 @@
 services:
   # Text Analyzer Service
   textanalyzer:
-    image: docutab-textanalyzer:latest
+    image: docutag-textanalyzer:latest
     build:
       context: .
       dockerfile: apps/textanalyzer/Dockerfile
-    container_name: docutab-textanalyzer
+    container_name: docutag-textanalyzer
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     ports:
       - "9082:8080"
@@ -16,8 +16,8 @@ services:
       # PostgreSQL configuration
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=docutab
-      - DB_PASSWORD=docutab_dev_pass
+      - DB_USER=docutag
+      - DB_PASSWORD=docutag_dev_pass
       - DB_NAME=textanalyzer_db
       - USE_OLLAMA=true
       - OLLAMA_URL=http://100.64.0.2:11434
@@ -38,7 +38,7 @@ services:
       retries: 3
       start_period: 10s
     networks:
-      - docutab-network
+      - docutag-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -51,13 +51,13 @@ services:
 
   # Scraper Service
   scraper:
-    image: docutab-scraper:latest
+    image: docutag-scraper:latest
     build:
       context: .
       dockerfile: apps/scraper/Dockerfile
-    container_name: docutab-scraper
+    container_name: docutag-scraper
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     ports:
       - "9081:8080"
@@ -70,8 +70,8 @@ services:
       # PostgreSQL configuration
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=docutab
-      - DB_PASSWORD=docutab_dev_pass
+      - DB_USER=docutag
+      - DB_PASSWORD=docutag_dev_pass
       - DB_NAME=scraper_db
       # - OLLAMA_VISION_MODEL=gemma3:4b
       # - MAX_IMAGES=20  # Maximum number of images to download per scrape (0 = unlimited)
@@ -93,7 +93,7 @@ services:
       retries: 3
       start_period: 15s
     networks:
-      - docutab-network
+      - docutag-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -104,13 +104,13 @@ services:
 
   # Controller Service
   controller:
-    image: docutab-controller:latest
+    image: docutag-controller:latest
     build:
       context: .
       dockerfile: apps/controller/Dockerfile
-    container_name: docutab-controller
+    container_name: docutag-controller
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     ports:
       - "9080:8080"
@@ -124,8 +124,8 @@ services:
       # PostgreSQL configuration
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=docutab
-      - DB_PASSWORD=docutab_dev_pass
+      - DB_USER=docutag
+      - DB_PASSWORD=docutag_dev_pass
       - DB_NAME=controller_db
       # Mock data generation (set to "true" to generate 14 days of test data)
       - GENERATE_MOCK_DATA=true
@@ -163,12 +163,12 @@ services:
       retries: 3
       start_period: 20s
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   # Web UI Service
   web:
-    image: docutab-web:latest
+    image: docutag-web:latest
     build:
       context: .
       dockerfile: apps/web/Dockerfile
@@ -178,9 +178,9 @@ services:
         - CONTROLLER_API_URL=http://controller:8080
         - VITE_GRAFANA_URL=http://localhost:3000/grafana
         - VITE_ASYNQ_URL=http://localhost:9084
-    container_name: docutab-web
+    container_name: docutag-web
     labels:
-      app: docutab
+      app: docutag
       app.type: frontend
     ports:
       - "3001:80"
@@ -202,18 +202,18 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   # Scheduler Service
   scheduler:
-    image: docutab-scheduler:latest
+    image: docutag-scheduler:latest
     build:
       context: .
       dockerfile: apps/scheduler/Dockerfile
-    container_name: docutab-scheduler
+    container_name: docutag-scheduler
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     ports:
       - "9083:8080"
@@ -222,8 +222,8 @@ services:
       # PostgreSQL configuration
       - DB_HOST=postgres
       - DB_PORT=5432
-      - DB_USER=docutab
-      - DB_PASSWORD=docutab_dev_pass
+      - DB_USER=docutag
+      - DB_PASSWORD=docutag_dev_pass
       - DB_NAME=scheduler_db
       - CONTROLLER_BASE_URL=http://controller:8080
       - SCRAPER_URL=http://scraper:8080
@@ -252,12 +252,12 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - docutab-network
+      - docutag-network
 
   # Redis - Message queue backend
   redis:
     image: redis:7-alpine
-    container_name: docutab-redis
+    container_name: docutag-redis
     ports:
       - "6379:6379"
     volumes:
@@ -271,12 +271,12 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - docutab-network
+      - docutag-network
 
   # Asynqmon - Queue monitoring UI
   asynqmon:
     image: hibiken/asynqmon:latest
-    container_name: docutab-asynqmon
+    container_name: docutag-asynqmon
     platform: linux/amd64  # Force x86_64 for ARM64 compatibility (no ARM64 build available)
     ports:
       - "9084:8080"
@@ -290,18 +290,18 @@ services:
       prometheus:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
 
   # PostgreSQL - Primary database for all services
   postgres:
     image: postgres:16-alpine
-    container_name: docutab-postgres
+    container_name: docutag-postgres
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=docutab
-      - POSTGRES_USER=docutab
-      - POSTGRES_PASSWORD=docutab_dev_pass
+      - POSTGRES_DB=docutag
+      - POSTGRES_USER=docutag
+      - POSTGRES_PASSWORD=docutag_dev_pass
       - PGDATA=/var/lib/postgresql/data/pgdata
       # Use dev.conf by default; override with staging.conf in production
       - POSTGRES_CONFIG_FILE=/etc/postgresql/dev.conf
@@ -320,7 +320,7 @@ services:
       retries: 5
       start_period: 10s
     networks:
-      - docutab-network
+      - docutag-network
     logging:
       driver: json-file
       options:
@@ -330,11 +330,11 @@ services:
   # PostgreSQL Exporter - Export PostgreSQL metrics to Prometheus
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter:latest
-    container_name: docutab-postgres-exporter
+    container_name: docutag-postgres-exporter
     ports:
       - "9187:9187"
     environment:
-      - DATA_SOURCE_NAME=postgresql://docutab:docutab_dev_pass@postgres:5432/docutab?sslmode=disable
+      - DATA_SOURCE_NAME=postgresql://docutag:docutag_dev_pass@postgres:5432/docutag?sslmode=disable
       - PG_EXPORTER_EXTEND_QUERY_PATH=/etc/postgres_exporter/queries.yaml
     volumes:
       - ./config/postgres/exporter-queries.yaml:/etc/postgres_exporter/queries.yaml:ro
@@ -343,7 +343,7 @@ services:
       postgres:
         condition: service_healthy
     networks:
-      - docutab-network
+      - docutag-network
     logging:
       driver: json-file
       options:
@@ -353,7 +353,7 @@ services:
   # Loki - Log aggregation
   loki:
     image: grafana/loki:3.0.0
-    container_name: docutab-loki
+    container_name: docutag-loki
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -362,12 +362,12 @@ services:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
   # Promtail - Log collector for Loki
   promtail:
     image: grafana/promtail:3.0.0
-    container_name: docutab-promtail
+    container_name: docutag-promtail
     volumes:
       - ./config/promtail:/etc/promtail
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -379,12 +379,12 @@ services:
       - loki
       - postgres
     networks:
-      - docutab-network
+      - docutag-network
 
   # Tempo - Distributed tracing
   tempo:
     image: grafana/tempo:latest
-    container_name: docutab-tempo
+    container_name: docutag-tempo
     command: [ "-config.file=/etc/tempo.yaml" ]
     ports:
       - "3200:3200"   # Tempo
@@ -395,12 +395,12 @@ services:
       - ./config/tempo-config.yaml:/etc/tempo.yaml
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
   # Grafana - Observability dashboard
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: docutab-grafana
+    container_name: docutag-grafana
     ports:
       - "3000:3000"
     environment:
@@ -418,12 +418,12 @@ services:
       - loki
       - tempo
     networks:
-      - docutab-network
+      - docutag-network
 
   # Prometheus - Metrics collection and monitoring
   prometheus:
     image: prom/prometheus:latest
-    container_name: docutab-prometheus
+    container_name: docutag-prometheus
     ports:
       - "9090:9090"
     volumes:
@@ -438,7 +438,7 @@ services:
       - '--web.enable-lifecycle'
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
     logging:
       driver: json-file
       options:
@@ -450,7 +450,7 @@ services:
   # Node Exporter - System and Docker volume metrics
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: docutab-node-exporter
+    container_name: docutag-node-exporter
     ports:
       - "9100:9100"
     volumes:
@@ -465,7 +465,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
 volumes:
   scraper-storage:
@@ -486,8 +486,8 @@ volumes:
     driver: local
 
 networks:
-  docutab-network:
-    name: docutab-network
+  docutag-network:
+    name: docutag-network
     driver: bridge
   proxy:
     name: proxy

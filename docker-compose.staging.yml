@@ -1,20 +1,20 @@
-# Staging configuration for DocuTab
+# Staging configuration for DocuTag
 # Assumes external reverse proxy (e.g., Caddy, Nginx, Traefik) handles:
 # - SSL/TLS termination
-# - Routing docutab.honker subdomain to web container
+# - Routing docutag.honker subdomain to web container
 # - Load balancing if needed
 #
 # External proxy should route:
-#   docutab.honker -> localhost:3001 (Web UI)
+#   docutag.honker -> localhost:3001 (Web UI)
 #
 # The web container's nginx then proxies /api/* to the controller service internally
 
 services:
   controller:
-    image: ghcr.io/zombar/docutab-controller:staging
-    container_name: docutab-controller
+    image: ghcr.io/docutag/docutag-controller:staging
+    container_name: docutag-controller
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     logging:
       driver: json-file
@@ -28,8 +28,8 @@ services:
       - SCHEDULER_BASE_URL=http://scheduler:8080
 
       # External URLs
-      - WEB_INTERFACE_URL=https://docutab.honker
-      - PUBLIC_URL_BASE=https://docutab.honker
+      - WEB_INTERFACE_URL=https://docutag.honker
+      - PUBLIC_URL_BASE=https://docutag.honker
 
       # Database
       - DATABASE_PATH=/app/data/controller.db
@@ -73,14 +73,14 @@ services:
       tempo:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   scraper:
-    image: ghcr.io/zombar/docutab-scraper:staging
-    container_name: docutab-scraper
+    image: ghcr.io/docutag/docutag-scraper:staging
+    container_name: docutag-scraper
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     logging:
       driver: json-file
@@ -120,14 +120,14 @@ services:
       tempo:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   textanalyzer:
-    image: ghcr.io/zombar/docutab-textanalyzer:staging
-    container_name: docutab-textanalyzer
+    image: ghcr.io/docutag/docutag-textanalyzer:staging
+    container_name: docutag-textanalyzer
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     logging:
       driver: json-file
@@ -171,14 +171,14 @@ services:
       tempo:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   scheduler:
-    image: ghcr.io/zombar/docutab-scheduler:staging
-    container_name: docutab-scheduler
+    image: ghcr.io/docutag/docutag-scheduler:staging
+    container_name: docutag-scheduler
     labels:
-      app: docutab
+      app: docutag
       app.type: backend
     logging:
       driver: json-file
@@ -227,12 +227,12 @@ services:
       tempo:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
 
   # Redis - Message queue backend
   redis:
     image: redis:7-alpine
-    container_name: docutab-redis
+    container_name: docutag-redis
     ports:
       - "6379:6379"
     volumes:
@@ -246,12 +246,12 @@ services:
       retries: 3
       start_period: 5s
     networks:
-      - docutab-network
+      - docutag-network
 
   # Asynqmon - Queue monitoring UI
   asynqmon:
     image: hibiken/asynqmon:latest
-    container_name: docutab-asynqmon
+    container_name: docutag-asynqmon
     platform: linux/amd64  # Force x86_64 for ARM64 compatibility
     ports:
       - "9084:8080"
@@ -265,14 +265,14 @@ services:
       prometheus:
         condition: service_started
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   web:
-    image: ghcr.io/zombar/docutab-web:staging
-    container_name: docutab-web
+    image: ghcr.io/docutag/docutag-web:staging
+    container_name: docutag-web
     labels:
-      app: docutab
+      app: docutag
       app.type: frontend
     logging:
       driver: json-file
@@ -289,13 +289,13 @@ services:
       controller:
         condition: service_healthy
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   # Loki - Log aggregation
   loki:
     image: grafana/loki:3.0.0
-    container_name: docutab-loki
+    container_name: docutag-loki
     ports:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
@@ -304,12 +304,12 @@ services:
       - ./config/loki-config.yaml:/etc/loki/local-config.yaml
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
   # Promtail - Log collector for Loki
   promtail:
     image: grafana/promtail:3.0.0
-    container_name: docutab-promtail
+    container_name: docutag-promtail
     volumes:
       - ./config/promtail:/etc/promtail
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -319,12 +319,12 @@ services:
     depends_on:
       - loki
     networks:
-      - docutab-network
+      - docutag-network
 
   # Tempo - Distributed tracing
   tempo:
     image: grafana/tempo:latest
-    container_name: docutab-tempo
+    container_name: docutag-tempo
     command: [ "-config.file=/etc/tempo.yaml" ]
     ports:
       - "3200:3200"   # Tempo
@@ -335,12 +335,12 @@ services:
       - ./config/tempo-config.yaml:/etc/tempo.yaml
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
   # Grafana - Observability dashboard
   grafana:
     image: grafana/grafana:11.0.0
-    container_name: docutab-grafana
+    container_name: docutag-grafana
     logging:
       driver: json-file
       options:
@@ -355,7 +355,7 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_SECURITY_ADMIN_USER=admin
       - GF_USERS_ALLOW_SIGN_UP=false
-      - GF_SERVER_ROOT_URL=https://docutab.honker/grafana
+      - GF_SERVER_ROOT_URL=https://docutag.honker/grafana
       - GF_SERVER_SERVE_FROM_SUB_PATH=true
       - GF_SERVER_LANDING_PAGE=/grafana/dashboards
     volumes:
@@ -366,13 +366,13 @@ services:
       - loki
       - tempo
     networks:
-      - docutab-network
+      - docutag-network
       - proxy
 
   # Prometheus - Metrics collection and monitoring
   prometheus:
     image: prom/prometheus:latest
-    container_name: docutab-prometheus
+    container_name: docutag-prometheus
     logging:
       driver: json-file
       options:
@@ -392,14 +392,14 @@ services:
       - '--web.enable-lifecycle'
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
     depends_on:
       - loki
 
   # Node Exporter - System and Docker volume metrics
   node-exporter:
     image: prom/node-exporter:latest
-    container_name: docutab-node-exporter
+    container_name: docutag-node-exporter
     logging:
       driver: json-file
       options:
@@ -419,7 +419,7 @@ services:
       - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
     restart: unless-stopped
     networks:
-      - docutab-network
+      - docutag-network
 
 # Networks and volumes for staging
 networks:

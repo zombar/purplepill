@@ -1,4 +1,4 @@
-module github.com/zombar/purpletab/pkg/tracing
+module github.com/docutag/platform/pkg/tracing
 
 go 1.24.0
 
