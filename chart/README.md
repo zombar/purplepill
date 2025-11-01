@@ -39,33 +39,61 @@ The chart supports multiple deployment strategies:
 ### Rolling Update (Default)
 Standard Kubernetes rolling update with zero-downtime pod replacement.
 
-### Blue-Green Deployment (Optional)
-Zero-downtime deployments with automated rollback using Argo Rollouts.
+### Progressive Delivery with Flagger (Recommended for Production)
+Automated canary and blue-green deployments with metric-based validation using Flagger.
 
 **Features**:
-- ✅ Run both old and new versions simultaneously
-- ✅ Automated health checks and Helm tests
-- ✅ Instant rollback on test failure
-- ✅ Manual or automated traffic switching
-- ✅ Prometheus metrics integration
+- ✅ Gradual traffic shifting (10% → 20% → ... → 100%)
+- ✅ Automated Prometheus metrics monitoring
+- ✅ Instant rollback on metric degradation
+- ✅ Helm test validation via webhooks
+- ✅ Zero-downtime deployments
+- ✅ Optional Slack notifications
 
-**Setup**: See [Blue-Green Deployment Guide](../docs/BLUE-GREEN-DEPLOYMENT.md) and [Argo Rollouts Setup](../docs/ARGO-ROLLOUTS-SETUP.md)
+**Deployment Strategies**:
+
+**Canary** - Gradual rollout with validation at each step:
+```
+Deploy → Run Tests → 10% traffic → 20% → ... → 100%
+Total time: ~10-12 minutes
+```
+
+**Blue-Green** - Instant switch after full validation:
+```
+Deploy → Run Tests → Validate metrics → Switch 100% traffic
+Total time: ~3-4 minutes
+```
+
+**Setup**: See [Flagger Setup Guide](../docs/FLAGGER-SETUP.md) and [Blue-Green Deployment Guide](../docs/BLUE-GREEN-DEPLOYMENT.md)
 
 **Enable**:
 ```yaml
-blueGreen:
+flagger:
   enabled: true
-  autoPromote: false  # Manual approval
+  strategy: canary  # or "blueGreen"
+  analysis:
+    interval: 1m
+    stepWeight: 10  # 10% traffic per step
+    iterations: 10  # 10 minutes total
+  metrics:
+    requestSuccessRate:
+      enabled: true
+      threshold: 99  # 99% success rate required
+    requestDuration:
+      enabled: true
+      threshold: 500  # p99 latency < 500ms
 ```
 
-### Automated Rollback Script
-For immediate rollback protection without Argo Rollouts:
+**Prerequisites**: Flagger controller and loadtester installed in cluster. See [FLAGGER-SETUP.md](../docs/FLAGGER-SETUP.md).
+
+### Automated Rollback Script (Simple Alternative)
+For immediate rollback protection without Flagger infrastructure:
 
 ```bash
 ./scripts/deploy-with-rollback.sh docutag docutag values-production.yaml
 ```
 
-Automatically rolls back if Helm tests fail after deployment.
+Automatically rolls back if Helm tests fail after deployment. No additional infrastructure required.
 
 ## Prerequisites
 

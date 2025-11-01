@@ -1,0 +1,94 @@
+{{- if .Values.flagger.enabled }}
+---
+# Request success rate metric
+# Calculates percentage of successful requests (non-5xx responses)
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: {{ include "docutag.fullname" . }}-request-success-rate
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  provider:
+    type: prometheus
+    address: {{ .Values.flagger.prometheus.address }}
+  query: |
+    sum(
+      rate(
+        http_requests_total{
+          namespace="{{ "{{ namespace }}" }}",
+          deployment=~"{{ "{{ target }}" }}.*",
+          status!~"5.."
+        }[{{ "{{ interval }}" }}]
+      )
+    )
+    /
+    sum(
+      rate(
+        http_requests_total{
+          namespace="{{ "{{ namespace }}" }}",
+          deployment=~"{{ "{{ target }}" }}.*"
+        }[{{ "{{ interval }}" }}]
+      )
+    ) * 100
+
+---
+# Request duration metric (p99 latency)
+# Measures 99th percentile request duration in milliseconds
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: {{ include "docutag.fullname" . }}-request-duration
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  provider:
+    type: prometheus
+    address: {{ .Values.flagger.prometheus.address }}
+  query: |
+    histogram_quantile(0.99,
+      sum(
+        rate(
+          http_request_duration_milliseconds_bucket{
+            namespace="{{ "{{ namespace }}" }}",
+            deployment=~"{{ "{{ target }}" }}.*"
+          }[{{ "{{ interval }}" }}]
+        )
+      ) by (le)
+    )
+
+{{- if .Values.flagger.metrics.errorRate.enabled }}
+---
+# Error rate metric
+# Calculates percentage of failed requests (4xx + 5xx)
+apiVersion: flagger.app/v1beta1
+kind: MetricTemplate
+metadata:
+  name: {{ include "docutag.fullname" . }}-error-rate
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  provider:
+    type: prometheus
+    address: {{ .Values.flagger.prometheus.address }}
+  query: |
+    sum(
+      rate(
+        http_requests_total{
+          namespace="{{ "{{ namespace }}" }}",
+          deployment=~"{{ "{{ target }}" }}.*",
+          status=~"[45].."
+        }[{{ "{{ interval }}" }}]
+      )
+    )
+    /
+    sum(
+      rate(
+        http_requests_total{
+          namespace="{{ "{{ namespace }}" }}",
+          deployment=~"{{ "{{ target }}" }}.*"
+        }[{{ "{{ interval }}" }}]
+      )
+    ) * 100
+{{- end }}
+{{- end }}

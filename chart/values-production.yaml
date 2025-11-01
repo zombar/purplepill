@@ -182,6 +182,32 @@ ingress:
     enabled: true
     certResolver: letsencrypt
 
+# Progressive delivery with Flagger
+flagger:
+  enabled: true  # Enable for production
+  strategy: canary  # Gradual rollout
+  analysis:
+    interval: 1m
+    threshold: 5
+    stepWeight: 10  # 10% traffic per step
+    iterations: 10  # 10 minutes total rollout
+  metrics:
+    requestSuccessRate:
+      enabled: true
+      threshold: 99  # 99% success rate required
+    requestDuration:
+      enabled: true
+      threshold: 500  # p99 latency < 500ms
+  webhooks:
+    helmTests:
+      enabled: true
+      timeout: 3m
+  alerts:
+    slack:
+      enabled: false  # Set to true and configure webhookUrl if desired
+      webhookUrl: ""  # Set via --set or secret
+      channel: "#deployments"
+
 affinity:
   podAntiAffinity:
     preferredDuringSchedulingIgnoredDuringExecution:

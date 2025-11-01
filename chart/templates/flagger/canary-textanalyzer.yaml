@@ -1,0 +1,54 @@
+{{- if and .Values.flagger.enabled .Values.textanalyzer.enabled }}
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: {{ include "docutag.fullname" . }}-textanalyzer
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+    app.kubernetes.io/component: textanalyzer
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docutag.fullname" . }}-textanalyzer
+
+  service:
+    port: {{ .Values.textanalyzer.service.port }}
+    targetPort: 8080
+    portName: http
+
+  analysis:
+    interval: {{ .Values.flagger.analysis.interval }}
+    threshold: {{ .Values.flagger.analysis.threshold }}
+
+    {{- if eq .Values.flagger.strategy "canary" }}
+    maxWeight: {{ .Values.flagger.analysis.maxWeight }}
+    stepWeight: {{ .Values.flagger.analysis.stepWeight }}
+    {{- if .Values.flagger.analysis.iterations }}
+    iterations: {{ .Values.flagger.analysis.iterations }}
+    {{- end }}
+    {{- else if eq .Values.flagger.strategy "blueGreen" }}
+    maxWeight: 100
+    stepWeight: 100
+    {{- end }}
+
+    metrics:
+    {{- if .Values.flagger.metrics.requestSuccessRate.enabled }}
+    - name: request-success-rate
+      templateRef:
+        name: {{ include "docutag.fullname" . }}-request-success-rate
+        namespace: {{ .Release.Namespace }}
+      thresholdRange:
+        min: {{ .Values.flagger.metrics.requestSuccessRate.threshold }}
+      interval: {{ .Values.flagger.analysis.interval }}
+    {{- end }}
+
+    {{- if .Values.flagger.alerts.slack.enabled }}
+    webhooks:
+    - name: slack-notification
+      type: event
+      url: {{ .Values.flagger.alerts.slack.webhookUrl }}
+      metadata:
+        channel: {{ .Values.flagger.alerts.slack.channel | default "#deployments" | quote }}
+    {{- end }}
+{{- end }}
