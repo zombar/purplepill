@@ -1,0 +1,70 @@
+{{- if .Values.scheduler.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "docutag.fullname" . }}-scheduler
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "scheduler" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  replicas: {{ .Values.scheduler.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "docutag.componentSelectorLabels" (dict "component" "scheduler" "context" .) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/scheduler/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "docutag.componentSelectorLabels" (dict "component" "scheduler" "context" .) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "docutag.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: scheduler
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: {{ include "docutag.image" (dict "imageRoot" .Values.scheduler.image "global" .Values.global "context" .) }}
+        imagePullPolicy: {{ include "docutag.imagePullPolicy" .Values.global }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.scheduler.env.port }}
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ include "docutag.fullname" . }}-scheduler
+        env:
+        - name: DB_HOST
+          value: {{ include "docutag.postgresqlHost" . | quote }}
+        - name: DB_PORT
+          value: {{ include "docutag.postgresqlPort" . | quote }}
+        - name: DB_NAME
+          value: "scheduler_db"
+        - name: DB_USER
+          value: {{ include "docutag.postgresqlUsername" . | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "docutag.postgresqlSecretName" . }}
+              key: {{ if .Values.postgresql.enabled }}password{{ else }}postgres-password{{ end }}
+        - name: TEMPO_ENDPOINT
+          value: "{{ include "docutag.fullname" . }}-tempo:4317"
+        livenessProbe:
+          {{- toYaml .Values.scheduler.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.scheduler.readinessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.scheduler.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

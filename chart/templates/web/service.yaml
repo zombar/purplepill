@@ -1,0 +1,17 @@
+{{- if .Values.web.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docutag.fullname" . }}-web
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "web" "type" "frontend" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.web.service.type }}
+  ports:
+  - port: {{ .Values.web.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "docutag.componentSelectorLabels" (dict "component" "web" "context" .) | nindent 4 }}
+{{- end }}

@@ -1,0 +1,17 @@
+{{- if .Values.controller.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docutag.fullname" . }}-controller
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "controller" "type" "backend" "context" .) | nindent 4 }}
+data:
+  CONTROLLER_PORT: {{ .Values.controller.env.port | quote }}
+  SCRAPER_BASE_URL: {{ tpl .Values.controller.env.scraperBaseUrl . | quote }}
+  TEXTANALYZER_BASE_URL: {{ tpl .Values.controller.env.textAnalyzerBaseUrl . | quote }}
+  SCHEDULER_BASE_URL: {{ tpl .Values.controller.env.schedulerBaseUrl . | quote }}
+  GENERATE_MOCK_DATA: {{ .Values.controller.env.generateMockData | quote }}
+  CORS_ORIGINS: {{ .Values.controller.env.corsOrigins | quote }}
+  WORKER_CONCURRENCY: {{ .Values.controller.env.workerConcurrency | quote }}
+  MAX_LINK_DEPTH: {{ .Values.controller.env.maxLinkDepth | quote }}
+{{- end }}

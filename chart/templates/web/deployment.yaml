@@ -1,0 +1,51 @@
+{{- if .Values.web.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "docutag.fullname" . }}-web
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "web" "type" "frontend" "context" .) | nindent 4 }}
+spec:
+  {{- if not .Values.web.autoscaling.enabled }}
+  replicas: {{ .Values.web.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docutag.componentSelectorLabels" (dict "component" "web" "context" .) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "docutag.componentSelectorLabels" (dict "component" "web" "context" .) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "docutag.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: web
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: {{ include "docutag.image" (dict "imageRoot" .Values.web.image "global" .Values.global "context" .) }}
+        imagePullPolicy: {{ include "docutag.imagePullPolicy" .Values.global }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.web.service.port }}
+          protocol: TCP
+        livenessProbe:
+          {{- toYaml .Values.web.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.web.readinessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.web.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

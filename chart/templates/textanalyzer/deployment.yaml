@@ -1,0 +1,74 @@
+{{- if .Values.textanalyzer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "docutag.fullname" . }}-textanalyzer
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "textanalyzer" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  {{- if not .Values.textanalyzer.autoscaling.enabled }}
+  replicas: {{ .Values.textanalyzer.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "docutag.componentSelectorLabels" (dict "component" "textanalyzer" "context" .) | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/textanalyzer/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "docutag.componentSelectorLabels" (dict "component" "textanalyzer" "context" .) | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "docutag.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: textanalyzer
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: {{ include "docutag.image" (dict "imageRoot" .Values.textanalyzer.image "global" .Values.global "context" .) }}
+        imagePullPolicy: {{ include "docutag.imagePullPolicy" .Values.global }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.textanalyzer.env.port }}
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ include "docutag.fullname" . }}-textanalyzer
+        env:
+        - name: DB_HOST
+          value: {{ include "docutag.postgresqlHost" . | quote }}
+        - name: DB_PORT
+          value: {{ include "docutag.postgresqlPort" . | quote }}
+        - name: DB_NAME
+          value: "textanalyzer_db"
+        - name: DB_USER
+          value: {{ include "docutag.postgresqlUsername" . | quote }}
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "docutag.postgresqlSecretName" . }}
+              key: {{ if .Values.postgresql.enabled }}password{{ else }}postgres-password{{ end }}
+        - name: REDIS_ADDR
+          value: {{ include "docutag.redisAddr" . | quote }}
+        - name: TEMPO_ENDPOINT
+          value: "{{ include "docutag.fullname" . }}-tempo:4317"
+        livenessProbe:
+          {{- toYaml .Values.textanalyzer.livenessProbe | nindent 12 }}
+        readinessProbe:
+          {{- toYaml .Values.textanalyzer.readinessProbe | nindent 12 }}
+        resources:
+          {{- toYaml .Values.textanalyzer.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

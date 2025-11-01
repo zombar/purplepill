@@ -1,0 +1,17 @@
+{{- if .Values.controller.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docutag.fullname" . }}-controller
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "controller" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.controller.service.type }}
+  ports:
+  - port: {{ .Values.controller.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "docutag.componentSelectorLabels" (dict "component" "controller" "context" .) | nindent 4 }}
+{{- end }}

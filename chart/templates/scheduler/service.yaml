@@ -1,0 +1,17 @@
+{{- if .Values.scheduler.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docutag.fullname" . }}-scheduler
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "scheduler" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  type: {{ .Values.scheduler.service.type }}
+  ports:
+  - port: {{ .Values.scheduler.service.port }}
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    {{- include "docutag.componentSelectorLabels" (dict "component" "scheduler" "context" .) | nindent 4 }}
+{{- end }}

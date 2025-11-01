@@ -1,0 +1,32 @@
+{{- if and .Values.controller.enabled .Values.controller.autoscaling.enabled }}
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "docutag.fullname" . }}-controller
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "controller" "type" "backend" "context" .) | nindent 4 }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docutag.fullname" . }}-controller
+  minReplicas: {{ .Values.controller.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.controller.autoscaling.maxReplicas }}
+  metrics:
+  {{- if .Values.controller.autoscaling.targetCPUUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.controller.autoscaling.targetCPUUtilizationPercentage }}
+  {{- end }}
+  {{- if .Values.controller.autoscaling.targetMemoryUtilizationPercentage }}
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: {{ .Values.controller.autoscaling.targetMemoryUtilizationPercentage }}
+  {{- end }}
+{{- end }}

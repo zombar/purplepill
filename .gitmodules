@@ -13,3 +13,6 @@
 [submodule "apps/scheduler"]
 	path = apps/scheduler
 	url = https://github.com/docutag/scheduler
+[submodule "infra"]
+	path = infra
+	url = https://github.com/docutag/infra.git

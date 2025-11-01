@@ -1,0 +1,14 @@
+{{- if .Values.textanalyzer.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "docutag.fullname" . }}-textanalyzer
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "textanalyzer" "type" "backend" "context" .) | nindent 4 }}
+data:
+  PORT: {{ .Values.textanalyzer.env.port | quote }}
+  USE_OLLAMA: {{ .Values.textanalyzer.env.useOllama | quote }}
+  OLLAMA_URL: {{ .Values.textanalyzer.env.ollamaUrl | quote }}
+  OLLAMA_MODEL: {{ .Values.textanalyzer.env.ollamaModel | quote }}
+  WORKER_CONCURRENCY: {{ .Values.textanalyzer.env.workerConcurrency | quote }}
+{{- end }}

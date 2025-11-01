@@ -1,0 +1,65 @@
+# Development environment overrides
+global:
+  domain: docutag.local
+  imageRegistry: ghcr.io/docutag
+  imagePullPolicy: Always
+
+controller:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+  env:
+    generateMockData: true
+
+scraper:
+  replicaCount: 1
+  persistence:
+    size: 10Gi
+
+textanalyzer:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+
+scheduler:
+  replicaCount: 1
+
+web:
+  replicaCount: 1
+  autoscaling:
+    enabled: false
+
+redis:
+  master:
+    persistence:
+      size: 2Gi
+
+postgresql:
+  enabled: true
+  primary:
+    persistence:
+      size: 10Gi
+
+externalDatabase:
+  enabled: false
+
+observability:
+  enabled: true
+  prometheus:
+    persistence:
+      size: 20Gi
+    retention: 7d
+  grafana:
+    persistence:
+      size: 5Gi
+  loki:
+    persistence:
+      size: 10Gi
+  tempo:
+    persistence:
+      size: 10Gi
+
+ingress:
+  enabled: true
+  tls:
+    enabled: false
