@@ -379,7 +379,7 @@ services:
         max-size: "10m"
         max-file: "3"
     ports:
-      - "9090"  # Use 9091 on host to avoid conflicts
+      - "9091:9090"  # Use 9091 on host to avoid conflicts with local dev
     volumes:
       - ./config/prometheus:/etc/prometheus
       - prometheus-data:/prometheus
