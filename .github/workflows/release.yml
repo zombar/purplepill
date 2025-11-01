@@ -124,11 +124,17 @@ jobs:
         run: |
           VERSION="${{ needs.calculate-version.outputs.version }}"
           echo "Building images with version: $VERSION"
+          echo "Production domain: https://eng.in.docutag.app"
 
           chmod +x build-staging.sh
           ./build-staging.sh push $VERSION
         env:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
+          # Production Vite environment variables
+          VITE_PUBLIC_URL_BASE: https://eng.in.docutag.app
+          VITE_CONTROLLER_API_URL: /api
+          VITE_GRAFANA_URL: https://eng.in.docutag.app/grafana
+          VITE_ASYNQ_URL: https://asynqmon.eng.in.docutag.app
 
   # Create Git tag and GitHub release
   create-release:

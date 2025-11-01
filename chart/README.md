@@ -161,7 +161,13 @@ ingress:
     grafana:
       host: "{{ .Values.global.domain }}"
       path: /grafana
+    asynqmon:
+      # Asynqmon uses subdomain routing (doesn't support subpath)
+      host: "asynqmon.{{ .Values.global.domain }}"
+      path: /
 ```
+
+**Note:** Asynqmon requires subdomain routing (e.g., `asynqmon.docutag.io`) because it doesn't properly support subpath deployment. Ensure DNS is configured with a wildcard A record or specific subdomain entry.
 
 ## Upgrading
 
@@ -188,7 +194,7 @@ After installation:
 1. **Web UI**: `https://your-domain/`
 2. **API**: `https://your-domain/api/`
 3. **Grafana**: `https://your-domain/grafana`
-4. **Asynqmon**: `https://your-domain/asynqmon`
+4. **Asynqmon**: `https://asynqmon.your-domain` (subdomain routing)
 
 ## Monitoring
 

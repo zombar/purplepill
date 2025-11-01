@@ -556,8 +556,9 @@ ingress:
 
     asynqmon:
       enabled: true
-      host: "{{ .Values.global.domain }}"
-      path: /asynqmon
+      # Asynqmon uses subdomain routing (doesn't support subpath properly)
+      host: "asynqmon.{{ .Values.global.domain }}"
+      path: /
       pathType: Prefix
       service: asynqmon
       port: 8080

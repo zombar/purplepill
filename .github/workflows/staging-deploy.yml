@@ -200,10 +200,16 @@ jobs:
 
       - name: Build and push all staging images
         run: |
+          echo "Building staging images for domain: https://docutag.honker"
           chmod +x build-staging.sh
           ./build-staging.sh push
         env:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
+          # Staging/honker Vite environment variables (defaults already set in build-staging.sh)
+          VITE_PUBLIC_URL_BASE: https://docutag.honker
+          VITE_CONTROLLER_API_URL: /api
+          VITE_GRAFANA_URL: https://docutag.honker/grafana
+          VITE_ASYNQ_URL: https://asynqmon.docutag.honker
 
   # Summary job
   staging-deploy-success:
