@@ -91,7 +91,7 @@ spec:
 {{- end }}
 
 ---
-# Asynqmon IngressRoute
+# Asynqmon IngressRoute (subdomain routing, no subpath - asynqmon doesn't support it)
 {{- if and .Values.ingress.routes.asynqmon.enabled .Values.asynqmon.enabled }}
 apiVersion: traefik.containo.us/v1alpha1
 kind: IngressRoute
@@ -103,7 +103,7 @@ spec:
   entryPoints:
     - websecure
   routes:
-    - match: Host(`{{ tpl .Values.ingress.routes.asynqmon.host . }}`) && PathPrefix(`{{ .Values.ingress.routes.asynqmon.path }}`)
+    - match: Host(`{{ tpl .Values.ingress.routes.asynqmon.host . }}`)
       kind: Rule
       services:
         - name: {{ include "docutag.fullname" . }}-{{ .Values.ingress.routes.asynqmon.service }}

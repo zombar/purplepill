@@ -1,0 +1,59 @@
+{{- if .Values.controller.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "docutag.fullname" . }}-test-api
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+  - name: test
+    image: curlimages/curl:latest
+    command:
+      - sh
+      - -c
+      - |
+        set -e
+        echo "Testing controller API endpoints..."
+
+        BASE_URL="http://{{ include "docutag.fullname" . }}-controller:8080"
+
+        # Wait for service to be ready
+        sleep 5
+
+        # Test health endpoint
+        echo "→ Testing /health endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" $BASE_URL/health)
+        if [ "$response" != "200" ]; then
+          echo "✗ Health endpoint failed (HTTP $response)"
+          exit 1
+        fi
+        echo "  ✓ Health endpoint OK"
+
+        # Test metrics endpoint
+        echo "→ Testing /metrics endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" $BASE_URL/metrics)
+        if [ "$response" != "200" ]; then
+          echo "✗ Metrics endpoint failed (HTTP $response)"
+          exit 1
+        fi
+        echo "  ✓ Metrics endpoint OK"
+
+        # Test API list sources endpoint (should work even with no data)
+        echo "→ Testing /api/sources endpoint..."
+        response=$(curl -s -o /dev/null -w "%{http_code}" $BASE_URL/api/sources)
+        if [ "$response" != "200" ]; then
+          echo "✗ Sources API endpoint failed (HTTP $response)"
+          exit 1
+        fi
+        echo "  ✓ Sources API endpoint OK"
+
+        echo ""
+        echo "✓ All API endpoint tests passed"
+        exit 0
+{{- end }}

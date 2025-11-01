@@ -11,10 +11,27 @@ permissions:
   packages: write  # For pushing to GHCR
 
 jobs:
+  # Test version calculation logic
+  test-version-calculation:
+    runs-on: ubuntu-latest
+    environment: CI
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Run version calculation tests
+        run: |
+          chmod +x scripts/test-calculate-version.sh
+          ./scripts/test-calculate-version.sh
+
   # Calculate next version based on conventional commits
   calculate-version:
     runs-on: ubuntu-latest
     environment: CI
+    needs: test-version-calculation
     outputs:
       version: ${{ steps.semver.outputs.version }}
       tag: ${{ steps.semver.outputs.tag }}
@@ -118,17 +135,23 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push versioned images
         run: |
           VERSION="${{ needs.calculate-version.outputs.version }}"
           echo "Building images with version: $VERSION"
+          echo "Production domain: https://eng.in.docutag.app"
 
           chmod +x build-staging.sh
           ./build-staging.sh push $VERSION
         env:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
+          # Production Vite environment variables
+          VITE_PUBLIC_URL_BASE: https://eng.in.docutag.app
+          VITE_CONTROLLER_API_URL: /api
+          VITE_GRAFANA_URL: https://eng.in.docutag.app/grafana
+          VITE_ASYNQ_URL: https://asynqmon.eng.in.docutag.app
 
   # Create Git tag and GitHub release
   create-release:

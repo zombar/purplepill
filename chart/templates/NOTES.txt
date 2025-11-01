@@ -11,7 +11,7 @@ To access your application:
 3. Grafana:      https://{{ include "docutag.domain" . }}/grafana
 {{- end }}
 {{- if .Values.asynqmon.enabled }}
-4. Queue Monitor: https://{{ include "docutag.domain" . }}/asynqmon
+4. Queue Monitor: https://asynqmon.{{ include "docutag.domain" . }}
 {{- end }}
 
 {{- if .Values.ingress.tls.enabled }}

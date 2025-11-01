@@ -1,0 +1,14 @@
+{{- if and .Values.flagger.enabled .Values.flagger.alerts.slack.enabled }}
+apiVersion: flagger.app/v1beta1
+kind: AlertProvider
+metadata:
+  name: {{ include "docutag.fullname" . }}-slack
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  type: slack
+  channel: {{ .Values.flagger.alerts.slack.channel | default "#deployments" }}
+  username: {{ .Values.flagger.alerts.slack.username | default "Flagger" }}
+  # Slack webhook URL should be set as secret or in values
+  address: {{ .Values.flagger.alerts.slack.webhookUrl }}
+{{- end }}
