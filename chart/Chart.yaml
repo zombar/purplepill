@@ -15,7 +15,7 @@ sources:
   - https://github.com/docutag/platform
 maintainers:
   - name: DocuTag Team
-    email: jim@8ball.app
+    email: team@docutag.io
 dependencies:
   - name: redis
     version: 18.0.0
