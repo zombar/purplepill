@@ -1,0 +1,174 @@
+name: Deploy Infrastructure
+
+# Manages cluster infrastructure via Pulumi
+# Idempotent - safe to run multiple times
+# Deploys: DOKS cluster, Traefik, Flagger, DNS, database
+on:
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      stack:
+        description: 'Pulumi stack to deploy'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+  push:
+    branches: [main]
+    paths:
+      - 'infra/**'
+      - '.github/workflows/infrastructure.yml'
+
+permissions:
+  contents: read
+  id-token: write  # For OIDC if using it
+
+jobs:
+  infrastructure:
+    runs-on: ubuntu-latest
+    # No environment needed - uses organization secrets instead
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache-dependency-path: infra/go.sum
+
+      - name: Install Pulumi CLI
+        uses: pulumi/actions@v5
+
+      - name: Configure Pulumi
+        run: |
+          # Login to Pulumi Cloud (state management)
+          pulumi login
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      - name: Select Pulumi stack
+        run: |
+          STACK="${{ github.event.inputs.stack || 'production' }}"
+          cd infra
+
+          # Select or create stack
+          if pulumi stack ls | grep -q "^${STACK}"; then
+            echo "Stack ${STACK} exists - selecting it"
+            pulumi stack select ${STACK}
+          else
+            echo "Stack ${STACK} does not exist - creating it"
+            pulumi stack init ${STACK}
+          fi
+
+      - name: Configure stack (production)
+        if: github.event.inputs.stack == 'production' || (github.event.inputs.stack == '' && github.ref == 'refs/heads/main')
+        run: |
+          cd infra
+
+          # Required configuration
+          pulumi config set region sfo3
+          pulumi config set domain eng.in.docutag.app
+          pulumi config set baseDomain docutag.app
+          pulumi config set namespace docutag
+
+          # Infrastructure options
+          pulumi config set enableFlagger true
+          pulumi config set useExternalDatabase false  # Use self-hosted PostgreSQL
+
+          # Optional custom Prometheus (if different from default)
+          # pulumi config set prometheusAddress "http://docutag-prometheus.docutag:9090"
+
+      - name: Install dependencies
+        run: |
+          cd infra
+          go mod download
+          go mod tidy
+
+      - name: Preview infrastructure changes
+        run: |
+          cd infra
+          pulumi preview --diff
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Deploy infrastructure
+        run: |
+          cd infra
+          pulumi up --yes --skip-preview
+        env:
+          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Export stack outputs
+        id: pulumi-outputs
+        run: |
+          cd infra
+
+          echo "cluster_name=$(pulumi stack output clusterName)" >> $GITHUB_OUTPUT
+          echo "cluster_endpoint=$(pulumi stack output clusterEndpoint)" >> $GITHUB_OUTPUT
+          echo "registry_endpoint=$(pulumi stack output registryEndpoint)" >> $GITHUB_OUTPUT
+          echo "load_balancer_ip=$(pulumi stack output traefikLoadBalancerIP)" >> $GITHUB_OUTPUT
+          echo "application_url=$(pulumi stack output applicationURL)" >> $GITHUB_OUTPUT
+
+      - name: Verify cluster access
+        run: |
+          # Install doctl
+          cd /tmp
+          wget https://github.com/digitalocean/doctl/releases/download/v1.104.0/doctl-1.104.0-linux-amd64.tar.gz
+          tar xf doctl-1.104.0-linux-amd64.tar.gz
+          sudo mv doctl /usr/local/bin
+
+          # Configure kubectl
+          doctl auth init --access-token ${{ secrets.DIGITALOCEAN_TOKEN }}
+          doctl kubernetes cluster kubeconfig save ${{ steps.pulumi-outputs.outputs.cluster_name }}
+
+          # Verify cluster access
+          kubectl cluster-info
+          kubectl get nodes
+
+      - name: Verify infrastructure components
+        run: |
+          echo "Checking infrastructure components..."
+
+          # Check Traefik
+          echo "Traefik:"
+          kubectl get pods -n traefik
+
+          # Check Flagger (if enabled)
+          echo ""
+          echo "Flagger:"
+          kubectl get pods -n flagger-system || echo "Flagger not enabled"
+
+          # Check application namespace
+          echo ""
+          echo "DocuTag namespace:"
+          kubectl get namespace docutag || echo "Application not yet deployed"
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          echo "========================================="
+          echo "Infrastructure Deployment Summary"
+          echo "========================================="
+          echo "Stack: ${{ github.event.inputs.stack || 'production' }}"
+          echo "Cluster: ${{ steps.pulumi-outputs.outputs.cluster_name }}"
+          echo "Region: sfo3"
+          echo ""
+          echo "Endpoints:"
+          echo "  Application: ${{ steps.pulumi-outputs.outputs.application_url }}"
+          echo "  Load Balancer: ${{ steps.pulumi-outputs.outputs.load_balancer_ip }}"
+          echo "  Registry: ${{ steps.pulumi-outputs.outputs.registry_endpoint }}"
+          echo ""
+          echo "Next steps:"
+          echo "  1. Infrastructure is ready"
+          echo "  2. Application will deploy automatically on next release"
+          echo "  3. Or deploy manually:"
+          echo "     helm upgrade docutag ./chart -n docutag -f chart/values-production.yaml"
