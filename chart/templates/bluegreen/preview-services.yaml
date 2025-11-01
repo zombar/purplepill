@@ -1,0 +1,39 @@
+{{- if .Values.blueGreen.enabled }}
+---
+# Controller preview service for blue-green deployments
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docutag.fullname" . }}-controller-preview
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "controller" "context" .) | nindent 4 }}
+    service-type: preview
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.controller.service.port }}
+      targetPort: 8080
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "docutag.componentSelectorLabels" (dict "component" "controller" "context" .) | nindent 4 }}
+
+---
+# Web preview service for blue-green deployments
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "docutag.fullname" . }}-web-preview
+  labels:
+    {{- include "docutag.componentLabels" (dict "component" "web" "type" "frontend" "context" .) | nindent 4 }}
+    service-type: preview
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.web.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "docutag.componentSelectorLabels" (dict "component" "web" "context" .) | nindent 4 }}
+{{- end }}

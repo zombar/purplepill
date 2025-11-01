@@ -32,6 +32,41 @@ The chart deploys:
 ### Ingress
 - **Traefik IngressRoutes** - Traffic routing with automatic TLS
 
+## Deployment Strategies
+
+The chart supports multiple deployment strategies:
+
+### Rolling Update (Default)
+Standard Kubernetes rolling update with zero-downtime pod replacement.
+
+### Blue-Green Deployment (Optional)
+Zero-downtime deployments with automated rollback using Argo Rollouts.
+
+**Features**:
+- ✅ Run both old and new versions simultaneously
+- ✅ Automated health checks and Helm tests
+- ✅ Instant rollback on test failure
+- ✅ Manual or automated traffic switching
+- ✅ Prometheus metrics integration
+
+**Setup**: See [Blue-Green Deployment Guide](../docs/BLUE-GREEN-DEPLOYMENT.md) and [Argo Rollouts Setup](../docs/ARGO-ROLLOUTS-SETUP.md)
+
+**Enable**:
+```yaml
+blueGreen:
+  enabled: true
+  autoPromote: false  # Manual approval
+```
+
+### Automated Rollback Script
+For immediate rollback protection without Argo Rollouts:
+
+```bash
+./scripts/deploy-with-rollback.sh docutag docutag values-production.yaml
+```
+
+Automatically rolls back if Helm tests fail after deployment.
+
 ## Prerequisites
 
 - Kubernetes 1.24+

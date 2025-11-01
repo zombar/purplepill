@@ -585,3 +585,37 @@ tolerations: []
 
 # Affinity
 affinity: {}
+
+# Blue-Green deployment (requires Argo Rollouts)
+# See docs/BLUE-GREEN-DEPLOYMENT.md for setup instructions
+blueGreen:
+  # Enable blue-green deployment strategy
+  # Requires Argo Rollouts controller to be installed in cluster
+  enabled: false
+
+  # Auto-promote to production after analysis passes
+  # Set to false for manual approval step
+  autoPromote: false
+
+  # Time to keep old version running after traffic switch (seconds)
+  scaleDownDelay: 30
+
+  # Analysis configuration
+  analysis:
+    # Helm test analysis
+    helmVersion: "3.13.0"
+    testTimeout: "180s"
+    testRetries: 1
+    initialDelay: "30s"
+
+    # Health check analysis
+    healthCheckDelay: "10s"
+    healthCheckCount: 5
+
+    # Prometheus metrics analysis (optional)
+    prometheusEnabled: false
+    prometheusAddress: "http://prometheus:9090"
+    metricsDelay: "60s"
+    metricsCount: 3
+    errorRateThreshold: 0.05  # 5% max error rate
+    responseTimeThreshold: 500  # 500ms p95 latency

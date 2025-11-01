@@ -1,0 +1,38 @@
+{{- if .Values.blueGreen.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ include "docutag.fullname" . }}-helm-tests
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+spec:
+  metrics:
+  - name: helm-test
+    initialDelay: {{ .Values.blueGreen.analysis.initialDelay | default "30s" }}
+    provider:
+      job:
+        metadata:
+          labels:
+            app: {{ include "docutag.name" . }}
+            analysis: helm-tests
+        spec:
+          serviceAccountName: {{ include "docutag.serviceAccountName" . }}
+          template:
+            spec:
+              containers:
+              - name: helm-test
+                image: alpine/helm:{{ .Values.blueGreen.analysis.helmVersion | default "3.13.0" }}
+                command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  echo "Running Helm tests for release: {{ .Release.Name }}"
+                  helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs --timeout={{ .Values.blueGreen.analysis.testTimeout | default "180s" }}
+                  echo "All tests passed!"
+              restartPolicy: Never
+          backoffLimit: {{ .Values.blueGreen.analysis.testRetries | default 1 }}
+    successCondition: "result.status == 'Succeeded'"
+    failureCondition: "result.status == 'Failed'"
+    failureLimit: 1
+{{- end }}
