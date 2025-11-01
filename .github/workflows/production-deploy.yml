@@ -20,7 +20,7 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: production  # Requires approval if configured
+    # Uses organization secrets - add 'environment: production' if you want manual approval
     steps:
       - uses: actions/checkout@v4
         with:

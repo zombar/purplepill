@@ -28,7 +28,7 @@ permissions:
 jobs:
   infrastructure:
     runs-on: ubuntu-latest
-    environment: ${{ github.event.inputs.stack || 'production' }}
+    # No environment needed - uses organization secrets instead
 
     steps:
       - name: Checkout code

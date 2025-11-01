@@ -37,74 +37,24 @@ Infrastructure Workflow (manual/automatic)
 
 ## Required Secrets
 
-Configure these in GitHub: **Settings → Secrets and variables → Actions**
+**Recommended approach**: Use **organization-level secrets** for simplicity.
 
-### 1. PULUMI_ACCESS_TOKEN
+See **[GitHub Secrets Setup Guide](./GITHUB-SECRETS-SETUP.md)** for detailed instructions.
 
-**Purpose**: Pulumi Cloud authentication for state management
+### Quick Setup (4 Organization Secrets)
 
-**How to get**:
-```bash
-# 1. Sign up at https://app.pulumi.com
-# 2. Go to Settings → Access Tokens
-# 3. Create new token
-# 4. Copy token value
-```
+**Navigate to**: `Organization Settings → Secrets and variables → Actions`
 
-**Add to GitHub**:
-- Name: `PULUMI_ACCESS_TOKEN`
-- Value: `pul-xxxxx...`
+1. **PULUMI_ACCESS_TOKEN** - Pulumi Cloud authentication
+2. **DIGITALOCEAN_TOKEN** - Digital Ocean API access
+3. **GHCR_TOKEN** - Container registry push access
+4. **SUBMODULE_TOKEN** - Private submodule access
 
-### 2. DIGITALOCEAN_TOKEN
+**Repository access**: Select `All repositories` or specific repos
 
-**Purpose**: Digital Ocean API access for cluster/resource management
+**Time to set up**: ~10 minutes
 
-**How to get**:
-```bash
-# 1. Go to https://cloud.digitalocean.com/account/api/tokens
-# 2. Generate New Token
-# 3. Name: "GitHub Actions CI/CD"
-# 4. Permissions: Read + Write
-# 5. Copy token value
-```
-
-**Add to GitHub**:
-- Name: `DIGITALOCEAN_TOKEN`
-- Value: `dop_v1_xxxxx...`
-
-### 3. GHCR_TOKEN
-
-**Purpose**: GitHub Container Registry authentication for pushing images
-
-**How to get**:
-```bash
-# 1. Go to https://github.com/settings/tokens
-# 2. Generate new token (classic)
-# 3. Name: "GHCR Push Token"
-# 4. Scopes: write:packages, read:packages, delete:packages
-# 5. Copy token value
-```
-
-**Add to GitHub**:
-- Name: `GHCR_TOKEN`
-- Value: `ghp_xxxxx...`
-
-### 4. SUBMODULE_TOKEN
-
-**Purpose**: Access to private submodule repositories
-
-**How to get**:
-```bash
-# 1. Go to https://github.com/settings/tokens
-# 2. Generate new token (classic)
-# 3. Name: "Submodule Access Token"
-# 4. Scopes: repo (full control)
-# 5. Copy token value
-```
-
-**Add to GitHub**:
-- Name: `SUBMODULE_TOKEN`
-- Value: `ghp_xxxxx...`
+**Detailed instructions**: [GITHUB-SECRETS-SETUP.md](./GITHUB-SECRETS-SETUP.md)
 
 ## Initial Setup (First Time)
 
@@ -120,23 +70,33 @@ pulumi login
 # 3. Your state will be stored at: https://app.pulumi.com
 ```
 
-### Step 2: Configure GitHub Environments
+### Step 2: Add Organization Secrets
 
-**Create production environment**:
+Add the 4 secrets to **Organization Settings → Secrets and variables → Actions**
+
+(See [GITHUB-SECRETS-SETUP.md](./GITHUB-SECRETS-SETUP.md) for detailed instructions)
+
+### Step 3: (Optional) Configure GitHub Environments
+
+**Only needed if you want manual approval for deployments.**
+
+**Create production environment** (optional):
 1. Go to **Settings → Environments → New environment**
 2. Name: `production`
-3. (Optional) Add protection rules:
-   - ✅ Required reviewers: 1
-   - ✅ Wait timer: 0 minutes
-   - ✅ Branch restrictions: main only
+3. Add protection rules:
+   - ✅ Required reviewers: 1-6 people
+   - ✅ Wait timer: 0 minutes (or add delay)
+   - ✅ Deployment branches: `main` only
 
-**Create CI environment**:
-1. Name: `CI`
-2. No protection rules needed
+4. Update workflow to use environment:
+   ```yaml
+   # .github/workflows/production-deploy.yml
+   jobs:
+     deploy:
+       environment: production  # Uncomment this line
+   ```
 
-### Step 3: Add All Secrets
-
-Add the 4 secrets listed above to **Repository Secrets** (not environment secrets).
+**Skip this step if**: You want fully automated deployments (Flagger provides safety).
 
 ### Step 4: Deploy Infrastructure (First Time)
 
