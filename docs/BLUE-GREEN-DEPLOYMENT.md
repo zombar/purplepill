@@ -98,7 +98,27 @@ See [FLAGGER-SETUP.md](./FLAGGER-SETUP.md) for complete installation guide.
 **Quick setup**:
 
 ```bash
-# 1. Install Flagger (one-time)
+# 1. Enable Flagger in Pulumi (one-time)
+cd infra
+pulumi config set enableFlagger true --stack production
+
+# 2. Deploy cluster with Flagger
+pulumi up
+
+# 3. Verify Flagger is running
+kubectl -n flagger-system get pods
+
+# 4. Deploy new version (Flagger handles progressive rollout)
+pulumi config set imageVersion 1.1.0
+pulumi up
+
+# 5. Monitor canary rollout
+kubectl get canaries -n docutag -w
+```
+
+**Manual Flagger installation** (for existing clusters):
+
+```bash
 helm repo add flagger https://flagger.app
 helm upgrade -i flagger flagger/flagger \
   --namespace flagger-system \
@@ -106,20 +126,8 @@ helm upgrade -i flagger flagger/flagger \
   --set prometheus.install=false \
   --set meshProvider=traefik
 
-# 2. Install loadtester (for Helm test webhooks)
 helm upgrade -i flagger-loadtester flagger/loadtester \
   --namespace flagger-system
-
-# 3. Enable in production
-# Set flagger.enabled: true in values-production.yaml
-
-# 4. Deploy
-cd infra
-pulumi config set imageVersion 1.1.0 --stack production
-pulumi up
-
-# 5. Monitor rollout
-kubectl get canaries -n docutag -w
 ```
 
 ### Configuration
@@ -328,28 +336,32 @@ If tests fail:
 
 ## Migration Path
 
-**Phase 1** (Week 1): Deploy Script
+**Phase 1** (Day 1): Deploy Script
 ```bash
 # Use script for automated rollback
-./scripts/deploy-with-rollback.sh docutag docutag values-production.yaml
+./scripts/deploy-with-rollback.sh docutag docutag chart/values-production.yaml
 ```
 
-**Phase 2** (Week 2-3): Install Flagger
+**Phase 2** (Day 2-3): Enable Flagger
 ```bash
-# Install Flagger controller
-helm install flagger flagger/flagger -n flagger-system ...
+# Enable Flagger in Pulumi configuration
+cd infra
+pulumi config set enableFlagger true --stack production
+pulumi up
 
-# Test in non-critical service first
-# Verify metrics collection
-# Practice rollback scenarios
+# Verify installation
+kubectl -n flagger-system get pods
 ```
 
-**Phase 3** (Week 4+): Enable in Production
-```yaml
-# values-production.yaml
-flagger:
-  enabled: true
-  strategy: canary
+**Phase 3** (Day 4+): Progressive Delivery
+```bash
+# Deploy new versions normally - Flagger handles rollout automatically
+cd infra
+pulumi config set imageVersion 1.1.0
+pulumi up
+
+# Monitor canary progression
+kubectl get canaries -n docutag -w
 ```
 
 ## Troubleshooting
