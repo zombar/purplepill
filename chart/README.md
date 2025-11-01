@@ -179,6 +179,27 @@ helm upgrade docutag ./chart -f ./chart/values-staging.yaml
 helm upgrade docutag ./chart --recreate-pods
 ```
 
+## Testing
+
+The chart includes built-in tests to verify the deployment:
+
+```bash
+# Run all tests
+helm test docutag -n docutag
+
+# Run with logs
+helm test docutag -n docutag --logs
+```
+
+**Available tests:**
+- Controller health endpoint
+- Web UI accessibility
+- Database connectivity (if PostgreSQL enabled)
+- Redis connectivity (if Redis enabled)
+- API endpoints (/health, /metrics, /api/sources)
+
+See [chart/templates/tests/README.md](templates/tests/README.md) for detailed test documentation.
+
 ## Uninstallation
 
 ```bash

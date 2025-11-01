@@ -11,10 +11,27 @@ permissions:
   packages: write  # For pushing to GHCR
 
 jobs:
+  # Test version calculation logic
+  test-version-calculation:
+    runs-on: ubuntu-latest
+    environment: CI
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Run version calculation tests
+        run: |
+          chmod +x scripts/test-calculate-version.sh
+          ./scripts/test-calculate-version.sh
+
   # Calculate next version based on conventional commits
   calculate-version:
     runs-on: ubuntu-latest
     environment: CI
+    needs: test-version-calculation
     outputs:
       version: ${{ steps.semver.outputs.version }}
       tag: ${{ steps.semver.outputs.tag }}
