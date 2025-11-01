@@ -95,14 +95,16 @@ redis:
         cpu: "500m"
 
 # Self-hosted PostgreSQL with HA (saves ~$240/month vs managed)
+# Passwords are automatically generated and managed by Pulumi (stored encrypted in Pulumi state)
+# Do not set passwords here - they will be overridden by Pulumi deployment
 postgresql:
   enabled: true
   architecture: replication  # Primary + read replica for HA
   auth:
     database: docutag
     username: docutag
-    password: changeme  # CHANGE THIS!
-    replicationPassword: changeme  # CHANGE THIS!
+    # password: Set automatically by Pulumi with secure random generation
+    # replicationPassword: Set automatically by Pulumi with secure random generation
   primary:
     persistence:
       size: 100Gi
