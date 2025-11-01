@@ -556,8 +556,9 @@ ingress:
 
     asynqmon:
       enabled: true
-      host: "{{ .Values.global.domain }}"
-      path: /asynqmon
+      # Asynqmon uses subdomain routing (doesn't support subpath properly)
+      host: "asynqmon.{{ .Values.global.domain }}"
+      path: /
       pathType: Prefix
       service: asynqmon
       port: 8080
@@ -584,3 +585,74 @@ tolerations: []
 
 # Affinity
 affinity: {}
+
+# Progressive delivery with Flagger
+# Supports canary (gradual) and blue-green (instant switch) deployments
+# See docs/FLAGGER-SETUP.md for installation and setup instructions
+flagger:
+  # Enable progressive delivery for production
+  # Requires Flagger controller to be installed in cluster
+  enabled: false
+
+  # Deployment strategy: "canary" or "blueGreen"
+  # canary: gradual traffic shift (10% → 20% → ... → 100%)
+  # blueGreen: instant switch after validation (0% → 100%)
+  strategy: canary
+
+  # Flagger loadtester namespace (for Helm test webhooks)
+  loadtesterNamespace: flagger-system
+
+  # Analysis configuration
+  analysis:
+    # How often to check metrics during rollout
+    interval: 1m
+
+    # Number of failed metric checks before automatic rollback
+    threshold: 5
+
+    # Maximum traffic weight for canary (100 = promote to 100%)
+    maxWeight: 100
+
+    # Traffic increment per step (canary mode only)
+    # 10 = increase by 10% each step (10%, 20%, 30%, ...)
+    stepWeight: 10
+
+    # Number of analysis iterations (canary mode only)
+    # 10 iterations * 1m interval = 10 minutes total rollout
+    iterations: 10
+
+  # Prometheus metrics monitoring
+  metrics:
+    # Request success rate (percentage of non-5xx responses)
+    requestSuccessRate:
+      enabled: true
+      threshold: 99  # Must maintain 99% success rate
+
+    # Request duration (p99 latency in milliseconds)
+    requestDuration:
+      enabled: true
+      threshold: 500  # p99 must be under 500ms
+
+    # Error rate (percentage of 4xx + 5xx responses)
+    errorRate:
+      enabled: false
+      threshold: 5  # Less than 5% error rate
+
+  # Prometheus server address
+  prometheus:
+    address: http://docutag-prometheus:9090
+
+  # Webhooks for validation and notifications
+  webhooks:
+    # Run Helm tests before starting traffic shift
+    helmTests:
+      enabled: true
+      timeout: 3m
+
+  # Slack notifications (optional)
+  alerts:
+    slack:
+      enabled: false
+      webhookUrl: ""
+      channel: "#deployments"
+      username: "Flagger"

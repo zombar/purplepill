@@ -1,0 +1,86 @@
+{{- if and .Values.flagger.enabled .Values.controller.enabled }}
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: {{ include "docutag.fullname" . }}-controller
+  labels:
+    {{- include "docutag.labels" . | nindent 4 }}
+    app.kubernetes.io/component: controller
+spec:
+  # Reference to the Deployment
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ include "docutag.fullname" . }}-controller
+
+  # Service configuration
+  service:
+    port: {{ .Values.controller.service.port }}
+    targetPort: 8080
+    portName: http
+
+  # Progressive delivery configuration
+  analysis:
+    # Check metrics every interval
+    interval: {{ .Values.flagger.analysis.interval }}
+
+    # Number of failed checks before rollback
+    threshold: {{ .Values.flagger.analysis.threshold }}
+
+    {{- if eq .Values.flagger.strategy "canary" }}
+    # Canary: gradual traffic increase
+    maxWeight: {{ .Values.flagger.analysis.maxWeight }}
+    stepWeight: {{ .Values.flagger.analysis.stepWeight }}
+    {{- if .Values.flagger.analysis.iterations }}
+    iterations: {{ .Values.flagger.analysis.iterations }}
+    {{- end }}
+    {{- else if eq .Values.flagger.strategy "blueGreen" }}
+    # Blue-Green: instant switch after validation
+    maxWeight: 100
+    stepWeight: 100
+    {{- end }}
+
+    # Prometheus metrics
+    metrics:
+    {{- if .Values.flagger.metrics.requestSuccessRate.enabled }}
+    - name: request-success-rate
+      templateRef:
+        name: {{ include "docutag.fullname" . }}-request-success-rate
+        namespace: {{ .Release.Namespace }}
+      thresholdRange:
+        min: {{ .Values.flagger.metrics.requestSuccessRate.threshold }}
+      interval: {{ .Values.flagger.analysis.interval }}
+    {{- end }}
+
+    {{- if .Values.flagger.metrics.requestDuration.enabled }}
+    - name: request-duration
+      templateRef:
+        name: {{ include "docutag.fullname" . }}-request-duration
+        namespace: {{ .Release.Namespace }}
+      thresholdRange:
+        max: {{ .Values.flagger.metrics.requestDuration.threshold }}
+      interval: {{ .Values.flagger.analysis.interval }}
+    {{- end }}
+
+    # Webhooks
+    webhooks:
+    {{- if .Values.flagger.webhooks.helmTests.enabled }}
+    # Pre-rollout: Run Helm tests
+    - name: helm-test
+      type: pre-rollout
+      url: http://flagger-loadtester.{{ .Values.flagger.loadtesterNamespace | default "flagger-system" }}/
+      timeout: {{ .Values.flagger.webhooks.helmTests.timeout }}
+      metadata:
+        type: bash
+        cmd: "helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs --timeout {{ .Values.flagger.webhooks.helmTests.timeout }}"
+    {{- end }}
+
+    {{- if .Values.flagger.alerts.slack.enabled }}
+    # Notifications
+    - name: slack-notification
+      type: event
+      url: {{ .Values.flagger.alerts.slack.webhookUrl }}
+      metadata:
+        channel: {{ .Values.flagger.alerts.slack.channel | default "#deployments" | quote }}
+    {{- end }}
+{{- end }}

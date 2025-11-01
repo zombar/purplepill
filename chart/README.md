@@ -32,6 +32,69 @@ The chart deploys:
 ### Ingress
 - **Traefik IngressRoutes** - Traffic routing with automatic TLS
 
+## Deployment Strategies
+
+The chart supports multiple deployment strategies:
+
+### Rolling Update (Default)
+Standard Kubernetes rolling update with zero-downtime pod replacement.
+
+### Progressive Delivery with Flagger (Recommended for Production)
+Automated canary and blue-green deployments with metric-based validation using Flagger.
+
+**Features**:
+- ✅ Gradual traffic shifting (10% → 20% → ... → 100%)
+- ✅ Automated Prometheus metrics monitoring
+- ✅ Instant rollback on metric degradation
+- ✅ Helm test validation via webhooks
+- ✅ Zero-downtime deployments
+- ✅ Optional Slack notifications
+
+**Deployment Strategies**:
+
+**Canary** - Gradual rollout with validation at each step:
+```
+Deploy → Run Tests → 10% traffic → 20% → ... → 100%
+Total time: ~10-12 minutes
+```
+
+**Blue-Green** - Instant switch after full validation:
+```
+Deploy → Run Tests → Validate metrics → Switch 100% traffic
+Total time: ~3-4 minutes
+```
+
+**Setup**: See [Flagger Setup Guide](../docs/FLAGGER-SETUP.md) and [Blue-Green Deployment Guide](../docs/BLUE-GREEN-DEPLOYMENT.md)
+
+**Enable**:
+```yaml
+flagger:
+  enabled: true
+  strategy: canary  # or "blueGreen"
+  analysis:
+    interval: 1m
+    stepWeight: 10  # 10% traffic per step
+    iterations: 10  # 10 minutes total
+  metrics:
+    requestSuccessRate:
+      enabled: true
+      threshold: 99  # 99% success rate required
+    requestDuration:
+      enabled: true
+      threshold: 500  # p99 latency < 500ms
+```
+
+**Prerequisites**: Flagger controller and loadtester installed in cluster. See [FLAGGER-SETUP.md](../docs/FLAGGER-SETUP.md).
+
+### Automated Rollback Script (Simple Alternative)
+For immediate rollback protection without Flagger infrastructure:
+
+```bash
+./scripts/deploy-with-rollback.sh docutag docutag values-production.yaml
+```
+
+Automatically rolls back if Helm tests fail after deployment. No additional infrastructure required.
+
 ## Prerequisites
 
 - Kubernetes 1.24+
@@ -161,7 +224,13 @@ ingress:
     grafana:
       host: "{{ .Values.global.domain }}"
       path: /grafana
+    asynqmon:
+      # Asynqmon uses subdomain routing (doesn't support subpath)
+      host: "asynqmon.{{ .Values.global.domain }}"
+      path: /
 ```
+
+**Note:** Asynqmon requires subdomain routing (e.g., `asynqmon.docutag.io`) because it doesn't properly support subpath deployment. Ensure DNS is configured with a wildcard A record or specific subdomain entry.
 
 ## Upgrading
 
@@ -172,6 +241,27 @@ helm upgrade docutag ./chart -f ./chart/values-staging.yaml
 # Force pod restart
 helm upgrade docutag ./chart --recreate-pods
 ```
+
+## Testing
+
+The chart includes built-in tests to verify the deployment:
+
+```bash
+# Run all tests
+helm test docutag -n docutag
+
+# Run with logs
+helm test docutag -n docutag --logs
+```
+
+**Available tests:**
+- Controller health endpoint
+- Web UI accessibility
+- Database connectivity (if PostgreSQL enabled)
+- Redis connectivity (if Redis enabled)
+- API endpoints (/health, /metrics, /api/sources)
+
+See [chart/templates/tests/README.md](templates/tests/README.md) for detailed test documentation.
 
 ## Uninstallation
 
@@ -188,7 +278,7 @@ After installation:
 1. **Web UI**: `https://your-domain/`
 2. **API**: `https://your-domain/api/`
 3. **Grafana**: `https://your-domain/grafana`
-4. **Asynqmon**: `https://your-domain/asynqmon`
+4. **Asynqmon**: `https://asynqmon.your-domain` (subdomain routing)
 
 ## Monitoring
 

@@ -6,10 +6,22 @@ set -e
 #   ./build-staging.sh              - Build all services for local platform
 #   ./build-staging.sh push         - Build multi-platform and push with :staging tag
 #   ./build-staging.sh push 1.0.0   - Build multi-platform and push with :1.0.0 tag
+#
+# Environment variables for web build configuration:
+#   VITE_PUBLIC_URL_BASE      - Base URL for the application (default: https://docutag.honker)
+#   VITE_CONTROLLER_API_URL   - Controller API URL (default: /api for relative routing)
+#   VITE_GRAFANA_URL          - Grafana URL (default: https://docutag.honker/grafana)
+#   VITE_ASYNQ_URL            - Asynqmon URL (default: https://asynqmon.docutag.honker - subdomain routing)
 
 REGISTRY=${REGISTRY:-ghcr.io/docutag}
 PUSH=${1:-}
 VERSION=${2:-staging}  # Default to "staging" tag if no version specified
+
+# Vite build configuration with defaults for staging/honker environment
+VITE_PUBLIC_URL_BASE=${VITE_PUBLIC_URL_BASE:-https://docutag.honker}
+VITE_CONTROLLER_API_URL=${VITE_CONTROLLER_API_URL:-/api}
+VITE_GRAFANA_URL=${VITE_GRAFANA_URL:-https://docutag.honker/grafana}
+VITE_ASYNQ_URL=${VITE_ASYNQ_URL:-https://asynqmon.docutag.honker}
 
 # Define all services
 SERVICES=("textanalyzer" "scraper" "controller" "scheduler" "web")
@@ -47,13 +59,13 @@ if [ "$PUSH" = "push" ]; then
         dockerfile=$(get_dockerfile "$service")
 
         if [ "$service" = "web" ]; then
-            # Web service needs build args
+            # Web service needs build args for Vite environment variables
             docker buildx build \
                 --platform linux/amd64 \
-                --build-arg VITE_PUBLIC_URL_BASE=https://docutag.honker \
-                --build-arg VITE_CONTROLLER_API_URL= \
-                --build-arg VITE_GRAFANA_URL=https://docutag.honker/grafana \
-                --build-arg VITE_ASYNQ_URL=http://honker:9084 \
+                --build-arg VITE_PUBLIC_URL_BASE="$VITE_PUBLIC_URL_BASE" \
+                --build-arg VITE_CONTROLLER_API_URL="$VITE_CONTROLLER_API_URL" \
+                --build-arg VITE_GRAFANA_URL="$VITE_GRAFANA_URL" \
+                --build-arg VITE_ASYNQ_URL="$VITE_ASYNQ_URL" \
                 -t $REGISTRY/docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \
@@ -81,12 +93,12 @@ else
         dockerfile=$(get_dockerfile "$service")
 
         if [ "$service" = "web" ]; then
-            # Web service needs build args
+            # Web service needs build args for Vite environment variables
             docker buildx build \
-                --build-arg VITE_PUBLIC_URL_BASE=https://docutag.honker \
-                --build-arg VITE_CONTROLLER_API_URL= \
-                --build-arg VITE_GRAFANA_URL=https://docutag.honker/grafana \
-                --build-arg VITE_ASYNQ_URL=http://honker:9084 \
+                --build-arg VITE_PUBLIC_URL_BASE="$VITE_PUBLIC_URL_BASE" \
+                --build-arg VITE_CONTROLLER_API_URL="$VITE_CONTROLLER_API_URL" \
+                --build-arg VITE_GRAFANA_URL="$VITE_GRAFANA_URL" \
+                --build-arg VITE_ASYNQ_URL="$VITE_ASYNQ_URL" \
                 -t docutag-$service:$VERSION \
                 -f $dockerfile \
                 . \

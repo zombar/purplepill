@@ -11,10 +11,27 @@ permissions:
   packages: write  # For pushing to GHCR
 
 jobs:
+  # Test version calculation logic
+  test-version-calculation:
+    runs-on: ubuntu-latest
+    environment: CI
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Run version calculation tests
+        run: |
+          chmod +x scripts/test-calculate-version.sh
+          ./scripts/test-calculate-version.sh
+
   # Calculate next version based on conventional commits
   calculate-version:
     runs-on: ubuntu-latest
     environment: CI
+    needs: test-version-calculation
     outputs:
       version: ${{ steps.semver.outputs.version }}
       tag: ${{ steps.semver.outputs.tag }}
@@ -37,50 +54,63 @@ jobs:
         run: |
           LATEST_TAG="${{ steps.latest-tag.outputs.latest_tag }}"
 
-          # Strip 'v' prefix if present
-          LATEST_VERSION="${LATEST_TAG#v}"
-
-          # Parse current version
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
-
-          # Get commits since last tag
-          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
-
-          # Determine version bump based on conventional commits
-          BREAKING=false
-          FEAT=false
-          FIX=false
-
-          while IFS= read -r commit; do
-            if echo "$commit" | grep -qE "BREAKING CHANGE|!:"; then
-              BREAKING=true
-            elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
-              FEAT=true
-            elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
-              FIX=true
-            fi
-          done <<< "$COMMITS"
-
-          # Bump version
-          if [ "$BREAKING" = true ]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            echo "Version bump: MAJOR (breaking change)"
-          elif [ "$FEAT" = true ]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-            echo "Version bump: MINOR (new feature)"
-          elif [ "$FIX" = true ]; then
-            PATCH=$((PATCH + 1))
-            echo "Version bump: PATCH (bug fix)"
+          # Check if this is the first release (no tags exist)
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            # First release - start at v1.0.0
+            echo "No previous tags found - creating initial release"
+            NEW_VERSION="1.0.0"
+            NEW_TAG="v1.0.0"
           else
-            PATCH=$((PATCH + 1))
-            echo "Version bump: PATCH (default)"
-          fi
+            # Strip 'v' prefix if present
+            LATEST_VERSION="${LATEST_TAG#v}"
 
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          NEW_TAG="v$NEW_VERSION"
+            # Parse current version
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+
+            # Get commits since last tag (only if tag exists in git history)
+            if git rev-parse "${LATEST_TAG}" >/dev/null 2>&1; then
+              COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
+            else
+              # Tag doesn't exist in history, get all commits
+              COMMITS=$(git log --pretty=format:"%s")
+            fi
+
+            # Determine version bump based on conventional commits
+            BREAKING=false
+            FEAT=false
+            FIX=false
+
+            while IFS= read -r commit; do
+              if echo "$commit" | grep -qE "BREAKING CHANGE|!:"; then
+                BREAKING=true
+              elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
+                FEAT=true
+              elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
+                FIX=true
+              fi
+            done <<< "$COMMITS"
+
+            # Bump version
+            if [ "$BREAKING" = true ]; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              echo "Version bump: MAJOR (breaking change)"
+            elif [ "$FEAT" = true ]; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              echo "Version bump: MINOR (new feature)"
+            elif [ "$FIX" = true ]; then
+              PATCH=$((PATCH + 1))
+              echo "Version bump: PATCH (bug fix)"
+            else
+              PATCH=$((PATCH + 1))
+              echo "Version bump: PATCH (default)"
+            fi
+
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            NEW_TAG="v$NEW_VERSION"
+          fi
 
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
@@ -105,17 +135,23 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.GHCR_TOKEN }}
 
       - name: Build and push versioned images
         run: |
           VERSION="${{ needs.calculate-version.outputs.version }}"
           echo "Building images with version: $VERSION"
+          echo "Production domain: https://eng.in.docutag.app"
 
           chmod +x build-staging.sh
           ./build-staging.sh push $VERSION
         env:
           REGISTRY: ghcr.io/${{ github.repository_owner }}
+          # Production Vite environment variables
+          VITE_PUBLIC_URL_BASE: https://eng.in.docutag.app
+          VITE_CONTROLLER_API_URL: /api
+          VITE_GRAFANA_URL: https://eng.in.docutag.app/grafana
+          VITE_ASYNQ_URL: https://asynqmon.eng.in.docutag.app
 
   # Create Git tag and GitHub release
   create-release:
