@@ -2,8 +2,8 @@
 
 [![CI](https://github.com/docutag/platform/actions/workflows/ci.yml/badge.svg)](https://github.com/docutag/platform/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![GitHub issues](https://img.shields.io/github/issues/zombar/purpletab)](https://github.com/docutag/platform/issues)
-[![GitHub stars](https://img.shields.io/github/stars/zombar/purpletab?style=social)](https://github.com/docutag/platform/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/docutag/platform)](https://github.com/docutag/platform/issues)
+[![GitHub stars](https://img.shields.io/github/stars/docutag/platform?style=social)](https://github.com/docutag/platform/stargazers)
 
 A microservices-based web content processing platform built in Go. The system scrapes web pages, extracts content using AI, and performs comprehensive text analysis.
 
@@ -240,7 +240,7 @@ All services expose `/metrics` endpoints with:
 - **System metrics**: CPU, memory, disk usage via node-exporter
 
 ### Pre-built Dashboards
-- **PurpleTab Backend Metrics** - Complete backend observability at http://localhost:3000/d/docutag-backend
+- **DocuTag Backend Metrics** - Complete backend observability at http://localhost:3000/d/docutag-backend
   - HTTP request rates and latency percentiles (p50, p95, p99)
   - Database connection pools and query performance
   - HTTP status code distribution
@@ -248,7 +248,7 @@ All services expose `/metrics` endpoints with:
   - System resource usage (CPU, memory)
   - Real-time service logs (Loki)
 
-- **PurpleTab Distributed Tracing** - Request tracing and performance at http://localhost:3000/d/docutag-tracing
+- **DocuTag Distributed Tracing** - Request tracing and performance at http://localhost:3000/d/docutag-tracing
   - Recent traces visualization
   - Request rate by HTTP method
   - Request duration by service (p50, p95, p99)
@@ -256,7 +256,7 @@ All services expose `/metrics` endpoints with:
   - Error rate tracking
   - Interactive trace search
 
-- **PurpleTab Service Logs** - Centralized log viewer at http://localhost:3000/d/docutag-logs
+- **DocuTag Service Logs** - Centralized log viewer at http://localhost:3000/d/docutag-logs
   - Aggregated logs from all services
   - Log level filtering
   - Service-specific log streams
@@ -462,10 +462,10 @@ Services connect to a shared PostgreSQL instance using environment variables. Se
 
 ### Code Metrics
 
-![GitHub code size](https://img.shields.io/github/languages/code-size/zombar/purpletab)
-![Lines of code](https://img.shields.io/tokei/lines/github/zombar/purpletab)
-![GitHub last commit](https://img.shields.io/github/last-commit/zombar/purpletab)
-![GitHub commit activity](https://img.shields.io/github/commit-activity/m/zombar/purpletab)
+![GitHub code size](https://img.shields.io/github/languages/code-size/docutag/platform)
+![Lines of code](https://img.shields.io/tokei/lines/github/docutag/platform)
+![GitHub last commit](https://img.shields.io/github/last-commit/docutag/platform)
+![GitHub commit activity](https://img.shields.io/github/commit-activity/m/docutag/platform)
 
 ### Service Test Coverage
 
@@ -484,15 +484,15 @@ Run `make test` for unit tests, `make test-integration` for integration tests, o
 
 ### Language Breakdown
 
-![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=zombar&repo=purpletab&layout=compact&theme=dark)
+![Top Languages](https://github-readme-stats.vercel.app/api/top-langs/?username=docutag&repo=platform&layout=compact&theme=dark)
 
 ### Repository Activity
 
-![GitHub Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=zombar&repo=purpletab&theme=github-compact)
+![GitHub Activity Graph](https://github-readme-activity-graph.vercel.app/graph?username=docutag&repo=platform&theme=github-compact)
 
 ### Contributors
 
-[![Contributors](https://contrib.rocks/image?repo=zombar/purpletab)](https://github.com/docutag/platform/graphs/contributors)
+[![Contributors](https://contrib.rocks/image?repo=docutag/platform)](https://github.com/docutag/platform/graphs/contributors)
 
 ## Production Considerations
 
