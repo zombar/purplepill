@@ -1,14 +1,14 @@
 #!/bin/bash
 set -e
 
-# Server-side deployment script for DocuTab staging
+# Server-side deployment script for DocuTag staging
 # Usage: ./deploy-staging.sh
 
-echo "🚀 Deploying DocuTab to staging..."
+echo "🚀 Deploying DocuTag to staging..."
 echo ""
 
 # Pull latest images from GitHub Container Registry
-echo "📥 Pulling latest images from ghcr.io/zombar..."
+echo "📥 Pulling latest images from ghcr.io/docutag..."
 docker compose -f docker-compose.yml -f docker-compose.staging.yml pull
 
 echo ""
