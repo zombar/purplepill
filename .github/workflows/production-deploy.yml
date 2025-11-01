@@ -1,0 +1,129 @@
+name: Deploy Application to Production
+
+# Trigger on release creation (after release workflow completes)
+# Deploys application updates (NOT infrastructure - see infrastructure.yml)
+# Infrastructure (cluster, Traefik, Flagger) is managed separately via Pulumi
+on:
+  release:
+    types: [published]
+
+  workflow_dispatch:  # Manual trigger
+    inputs:
+      version:
+        description: 'Version to deploy (e.g., 1.0.0)'
+        required: true
+
+permissions:
+  contents: read
+  packages: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production  # Requires approval if configured
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.SUBMODULE_TOKEN }}
+
+      - name: Determine version to deploy
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            # Manual trigger - use provided version
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # Release trigger - extract from tag
+            VERSION="${{ github.event.release.tag_name }}"
+            VERSION="${VERSION#v}"  # Remove 'v' prefix
+          fi
+
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Deploying version: $VERSION"
+
+      - name: Configure kubectl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_TOKEN }}
+
+      - name: Connect to DOKS cluster
+        run: |
+          doctl kubernetes cluster kubeconfig save docutag-production
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo update
+
+      - name: Deploy with Helm
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          # Deploy using Helm directly (faster than Pulumi for app updates)
+          helm upgrade docutag ./chart \
+            --namespace docutag \
+            --create-namespace \
+            --install \
+            --wait \
+            --timeout 10m \
+            --values ./chart/values-production.yaml \
+            --set global.imageVersion="$VERSION"
+
+      - name: Verify deployment
+        run: |
+          echo "Checking deployment status..."
+          kubectl get pods -n docutag
+
+          echo ""
+          echo "Checking Helm release..."
+          helm list -n docutag
+
+      - name: Run Helm tests
+        run: |
+          echo "Running post-deployment tests..."
+          helm test docutag -n docutag --logs
+
+      - name: Monitor Flagger canary (if enabled)
+        run: |
+          # Check if Flagger is managing this deployment
+          if kubectl get canary docutag-controller -n docutag &>/dev/null; then
+            echo "Flagger canary detected - monitoring rollout..."
+
+            # Watch canary status for 2 minutes
+            timeout 120 kubectl get canary docutag-controller -n docutag -w || true
+
+            # Get final status
+            echo ""
+            echo "Final canary status:"
+            kubectl get canaries -n docutag
+          else
+            echo "No Flagger canary found - standard deployment"
+          fi
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+
+          echo "========================================="
+          echo "Deployment Summary"
+          echo "========================================="
+          echo "Version: $VERSION"
+          echo "Release: ${{ github.event.release.html_url }}"
+          echo ""
+          echo "Application URL: https://eng.in.docutag.app"
+          echo ""
+
+          # Check pod status
+          if kubectl get pods -n docutag | grep -v Running | grep -v Completed; then
+            echo "⚠️ Some pods are not in Running state"
+          else
+            echo "✅ All pods running successfully"
+          fi
+
+          echo ""
+          echo "Monitor deployment:"
+          echo "  kubectl get pods -n docutag -w"
+          echo "  kubectl get canaries -n docutag -w"
