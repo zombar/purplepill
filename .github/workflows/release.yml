@@ -37,50 +37,63 @@ jobs:
         run: |
           LATEST_TAG="${{ steps.latest-tag.outputs.latest_tag }}"
 
-          # Strip 'v' prefix if present
-          LATEST_VERSION="${LATEST_TAG#v}"
-
-          # Parse current version
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
-
-          # Get commits since last tag
-          COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
-
-          # Determine version bump based on conventional commits
-          BREAKING=false
-          FEAT=false
-          FIX=false
-
-          while IFS= read -r commit; do
-            if echo "$commit" | grep -qE "BREAKING CHANGE|!:"; then
-              BREAKING=true
-            elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
-              FEAT=true
-            elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
-              FIX=true
-            fi
-          done <<< "$COMMITS"
-
-          # Bump version
-          if [ "$BREAKING" = true ]; then
-            MAJOR=$((MAJOR + 1))
-            MINOR=0
-            PATCH=0
-            echo "Version bump: MAJOR (breaking change)"
-          elif [ "$FEAT" = true ]; then
-            MINOR=$((MINOR + 1))
-            PATCH=0
-            echo "Version bump: MINOR (new feature)"
-          elif [ "$FIX" = true ]; then
-            PATCH=$((PATCH + 1))
-            echo "Version bump: PATCH (bug fix)"
+          # Check if this is the first release (no tags exist)
+          if [ "$LATEST_TAG" = "v0.0.0" ]; then
+            # First release - start at v1.0.0
+            echo "No previous tags found - creating initial release"
+            NEW_VERSION="1.0.0"
+            NEW_TAG="v1.0.0"
           else
-            PATCH=$((PATCH + 1))
-            echo "Version bump: PATCH (default)"
-          fi
+            # Strip 'v' prefix if present
+            LATEST_VERSION="${LATEST_TAG#v}"
 
-          NEW_VERSION="$MAJOR.$MINOR.$PATCH"
-          NEW_TAG="v$NEW_VERSION"
+            # Parse current version
+            IFS='.' read -r MAJOR MINOR PATCH <<< "$LATEST_VERSION"
+
+            # Get commits since last tag (only if tag exists in git history)
+            if git rev-parse "${LATEST_TAG}" >/dev/null 2>&1; then
+              COMMITS=$(git log ${LATEST_TAG}..HEAD --pretty=format:"%s")
+            else
+              # Tag doesn't exist in history, get all commits
+              COMMITS=$(git log --pretty=format:"%s")
+            fi
+
+            # Determine version bump based on conventional commits
+            BREAKING=false
+            FEAT=false
+            FIX=false
+
+            while IFS= read -r commit; do
+              if echo "$commit" | grep -qE "BREAKING CHANGE|!:"; then
+                BREAKING=true
+              elif echo "$commit" | grep -qE "^feat(\(.+\))?:"; then
+                FEAT=true
+              elif echo "$commit" | grep -qE "^fix(\(.+\))?:"; then
+                FIX=true
+              fi
+            done <<< "$COMMITS"
+
+            # Bump version
+            if [ "$BREAKING" = true ]; then
+              MAJOR=$((MAJOR + 1))
+              MINOR=0
+              PATCH=0
+              echo "Version bump: MAJOR (breaking change)"
+            elif [ "$FEAT" = true ]; then
+              MINOR=$((MINOR + 1))
+              PATCH=0
+              echo "Version bump: MINOR (new feature)"
+            elif [ "$FIX" = true ]; then
+              PATCH=$((PATCH + 1))
+              echo "Version bump: PATCH (bug fix)"
+            else
+              PATCH=$((PATCH + 1))
+              echo "Version bump: PATCH (default)"
+            fi
+
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH"
+            NEW_TAG="v$NEW_VERSION"
+          fi
 
           echo "version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag=$NEW_TAG" >> $GITHUB_OUTPUT
