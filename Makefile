@@ -7,6 +7,7 @@ SCRAPER_DIR=apps/scraper
 TEXTANALYZER_DIR=apps/textanalyzer
 WEB_DIR=apps/web
 SCHEDULER_DIR=apps/scheduler
+INFRA_DIR=infra
 
 # Default target
 help: ## Display this help message
@@ -14,8 +15,8 @@ help: ## Display this help message
 	@echo ""
 	@echo "Aggregate commands (run across all submodules):"
 	@echo "  build              - Build all services"
-	@echo "  test               - Run tests for all services"
-	@echo "  test-coverage      - Run tests with coverage for all services"
+	@echo "  test               - Run tests for all services + infrastructure"
+	@echo "  test-coverage      - Run tests with coverage for all services + infrastructure"
 	@echo "  clean              - Clean build artifacts for all services"
 	@echo "  install            - Install dependencies for all services"
 	@echo "  fmt                - Format code for all services"
@@ -99,6 +100,8 @@ help: ## Display this help message
 	@echo "  web-lint           - Lint web interface"
 	@echo "  web-dev            - Run web dev server"
 	@echo "  web-install        - Install web dependencies"
+	@echo "  infra-test         - Run infrastructure tests"
+	@echo "  infra-test-coverage - Run infrastructure tests with coverage"
 	@echo ""
 	@echo "For more service-specific commands (SEO tests, benchmarks, etc.):"
 	@echo "  cd apps/controller && make help"
@@ -127,6 +130,8 @@ test: ## Run tests for all services
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test
 	@$(MAKE) -C $(SCHEDULER_DIR) test
 	@cd $(WEB_DIR) && npm test -- --run
+	@echo "Running infrastructure tests..."
+	@cd $(INFRA_DIR) && go test -v ./...
 	@echo "All tests completed!"
 
 test-coverage: ## Run tests with coverage for all services
@@ -136,6 +141,8 @@ test-coverage: ## Run tests with coverage for all services
 	@$(MAKE) -C $(TEXTANALYZER_DIR) test-coverage
 	@$(MAKE) -C $(SCHEDULER_DIR) test
 	@cd $(WEB_DIR) && npm run test:coverage -- --run
+	@echo "Running infrastructure tests with coverage..."
+	@cd $(INFRA_DIR) && go test -v -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 	@echo "All coverage reports generated!"
 
 clean: ## Clean build artifacts for all services
@@ -553,6 +560,13 @@ web-preview:
 
 web-clean:
 	@cd $(WEB_DIR) && rm -rf dist
+
+# Infrastructure commands
+infra-test:
+	@cd $(INFRA_DIR) && go test -v ./...
+
+infra-test-coverage:
+	@cd $(INFRA_DIR) && go test -v -coverprofile=coverage.out ./... && go tool cover -func=coverage.out
 
 # ==================== Utility Commands ====================
 
