@@ -1,4 +1,4 @@
-module github.com/docutag/platform/tests/integration
+module github.com/docutag/controller/tests/integration
 
 go 1.24.0
 
